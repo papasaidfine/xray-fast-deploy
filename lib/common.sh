@@ -74,11 +74,11 @@ save_server_info() {
 
     mkdir -p "$INFO_DIR"
     cat > "$INFO_DIR/server.info" <<EOF
-PUBLIC_KEY=$public_key
-PORT=$port
-SNI=$sni
-SERVER_IP=$(get_server_ip)
-CREATED=$(date '+%Y-%m-%d %H:%M:%S')
+PUBLIC_KEY="$public_key"
+PORT="$port"
+SNI="$sni"
+SERVER_IP="$(get_server_ip)"
+CREATED="$(date '+%Y-%m-%d %H:%M:%S')"
 EOF
     chmod 600 "$INFO_DIR/server.info"
 }
