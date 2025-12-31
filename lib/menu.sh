@@ -25,14 +25,15 @@ show_menu() {
     echo " 10. Show server status"
     echo " 11. Change disguised website"
     echo " 12. Change port"
-    echo " 13. Regenerate server keys"
-    echo " 14. Restart service"
-    echo " 15. Test configuration"
-    echo " 16. View logs (last 50 lines)"
-    echo " 17. Follow logs (live)"
+    echo " 13. Change log level"
+    echo " 14. Regenerate server keys"
+    echo " 15. Restart service"
+    echo " 16. Test configuration"
+    echo " 17. View logs (last 50 lines)"
+    echo " 18. Follow logs (live)"
     echo ""
     echo -e "${YELLOW}[ System ]${NC}"
-    echo " 18. Uninstall"
+    echo " 19. Uninstall"
     echo "  0. Exit"
     echo ""
 }
@@ -90,22 +91,25 @@ manage_server() {
                 change_port
                 ;;
             13)
-                regenerate_keys
+                change_log_level
                 ;;
             14)
-                restart_service
+                regenerate_keys
                 ;;
             15)
-                test_config
+                restart_service
                 ;;
             16)
-                show_logs 50
+                test_config
                 ;;
             17)
+                show_logs 50
+                ;;
+            18)
                 follow_logs
                 ;;
             # System
-            18)
+            19)
                 uninstall_xray
                 exit 0
                 ;;

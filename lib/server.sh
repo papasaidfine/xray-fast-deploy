@@ -157,3 +157,48 @@ stop_service() {
     systemctl stop xray
     log_success "Service stopped"
 }
+
+# Change log level
+change_log_level() {
+    local level="$1"
+
+    if [[ -z "$level" ]]; then
+        local current=$(jq -r '.log.loglevel' "$CONFIG_FILE" 2>/dev/null)
+        echo ""
+        echo "Current log level: $current"
+        echo ""
+        echo "Available levels:"
+        echo "  1. none     - No logging"
+        echo "  2. error    - Errors only"
+        echo "  3. warning  - Warnings and errors (default)"
+        echo "  4. info     - Connection info + warnings + errors"
+        echo "  5. debug    - Verbose debugging"
+        echo ""
+        read -p "Select level (1-5): " choice
+
+        case "$choice" in
+            1) level="none" ;;
+            2) level="error" ;;
+            3) level="warning" ;;
+            4) level="info" ;;
+            5) level="debug" ;;
+            *) log_error "Invalid option"; return 1 ;;
+        esac
+    fi
+
+    # Validate level
+    if [[ ! "$level" =~ ^(none|error|warning|info|debug)$ ]]; then
+        log_error "Invalid log level: $level"
+        return 1
+    fi
+
+    # Update config
+    local tmp_file=$(mktemp)
+    jq ".log.loglevel = \"$level\"" "$CONFIG_FILE" > "$tmp_file"
+    mv "$tmp_file" "$CONFIG_FILE"
+    chown xray:xray "$CONFIG_FILE"
+    chmod 600 "$CONFIG_FILE"
+
+    systemctl restart xray
+    log_success "Log level changed to: $level"
+}

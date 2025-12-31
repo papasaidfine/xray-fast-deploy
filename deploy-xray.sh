@@ -46,6 +46,7 @@ Server Commands:
   restart         Restart Xray service
   test            Test configuration
   logs            Show recent logs
+  log-level       Change log level (none/error/warning/info/debug)
   fix             Repair/regenerate server info file
   uninstall       Remove Xray completely
 
@@ -56,6 +57,7 @@ Options:
   --name NAME         Client name for operations
   --new-name NAME     New name for rename operation
   --domain DOMAIN     Domain for disguise change
+  --level LEVEL       Log level (none/error/warning/info/debug)
 
 Examples:
   $0 install
@@ -65,6 +67,7 @@ Examples:
   $0 qr --name laptop
   $0 qr-all
   $0 change-disguise --domain www.google.com
+  $0 log-level --level info
   $0 manage
 
 EOF
@@ -81,6 +84,7 @@ parse_args() {
     local name=""
     local new_name=""
     local domain=""
+    local level=""
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -90,6 +94,7 @@ parse_args() {
             --name) name="$2"; shift 2 ;;
             --new-name) new_name="$2"; shift 2 ;;
             --domain) domain="$2"; shift 2 ;;
+            --level) level="$2"; shift 2 ;;
             --help|-h) show_help; exit 0 ;;
             *) shift ;;
         esac
@@ -167,6 +172,9 @@ parse_args() {
             ;;
         logs)
             show_logs
+            ;;
+        log-level)
+            change_log_level "$level"
             ;;
         fix|repair)
             log_info "Regenerating server info..."
