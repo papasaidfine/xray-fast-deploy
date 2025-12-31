@@ -7,8 +7,8 @@
 # Generate X25519 key pair (sets PRIVATE_KEY and PUBLIC_KEY globals)
 generate_keys() {
     local output=$(xray x25519)
-    PRIVATE_KEY=$(echo "$output" | grep "Private key:" | awk '{print $3}')
-    PUBLIC_KEY=$(echo "$output" | grep "Public key:" | awk '{print $3}')
+    PRIVATE_KEY=$(echo "$output" | grep "PrivateKey:" | awk '{print $2}')
+    PUBLIC_KEY=$(echo "$output" | grep "Password:" | awk '{print $2}')
 }
 
 # Generate UUID
@@ -24,7 +24,7 @@ generate_short_id() {
 # Get public key from private key
 get_public_key() {
     local private_key="$1"
-    xray x25519 -i "$private_key" 2>/dev/null | grep "Public key:" | awk '{print $3}'
+    xray x25519 -i "$private_key" 2>/dev/null | grep "Password:" | awk '{print $2}'
 }
 
 # Create initial Xray configuration
