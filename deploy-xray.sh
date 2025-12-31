@@ -46,6 +46,7 @@ Server Commands:
   restart         Restart Xray service
   test            Test configuration
   logs            Show recent logs
+  fix             Repair/regenerate server info file
   uninstall       Remove Xray completely
 
 Options:
@@ -166,6 +167,11 @@ parse_args() {
             ;;
         logs)
             show_logs
+            ;;
+        fix|repair)
+            log_info "Regenerating server info..."
+            regenerate_server_info
+            log_success "Server info regenerated"
             ;;
         uninstall)
             uninstall_xray

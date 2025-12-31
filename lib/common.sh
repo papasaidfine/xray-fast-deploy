@@ -61,9 +61,43 @@ get_server_ip() {
 
 # Load server info from saved file
 load_server_info() {
+    # Try to load from saved file first
     if [[ -f "$INFO_DIR/server.info" ]]; then
-        source "$INFO_DIR/server.info"
+        # Check if file has issues (unquoted values)
+        if grep -q '=[^"]' "$INFO_DIR/server.info" 2>/dev/null; then
+            # Regenerate from config
+            regenerate_server_info
+        fi
+        source "$INFO_DIR/server.info" 2>/dev/null || regenerate_server_info
+    elif [[ -f "$CONFIG_FILE" ]]; then
+        # No server.info, regenerate from config
+        regenerate_server_info
     fi
+}
+
+# Regenerate server.info from current config
+regenerate_server_info() {
+    if [[ ! -f "$CONFIG_FILE" ]]; then
+        return 1
+    fi
+
+    local private_key=$(jq -r '.inbounds[0].streamSettings.realitySettings.privateKey' "$CONFIG_FILE" 2>/dev/null)
+    local public_key=$(xray x25519 -i "$private_key" 2>/dev/null | grep "Password:" | awk '{print $2}')
+    local port=$(jq -r '.inbounds[0].port' "$CONFIG_FILE" 2>/dev/null)
+    local sni=$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$CONFIG_FILE" 2>/dev/null)
+
+    mkdir -p "$INFO_DIR"
+    cat > "$INFO_DIR/server.info" <<EOF
+PUBLIC_KEY="$public_key"
+PORT="$port"
+SNI="$sni"
+SERVER_IP="$(get_server_ip)"
+CREATED="$(date '+%Y-%m-%d %H:%M:%S')"
+EOF
+    chmod 600 "$INFO_DIR/server.info"
+
+    # Source the newly created file
+    source "$INFO_DIR/server.info"
 }
 
 # Save server info
