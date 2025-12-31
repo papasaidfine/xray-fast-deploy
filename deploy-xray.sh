@@ -26,29 +26,43 @@ Usage: $0 [command] [options]
 Commands:
   install         Fresh installation (interactive if no options)
   manage          Open management menu
-  status          Show server status
+
+Client Commands:
+  list-clients    List all clients
   add-client      Add new client
   remove-client   Remove a client
-  list-clients    List all clients
+  rename-client   Rename a client
+  reset-uuid      Reset client UUID
   show-client     Show client configuration
-  export          Export all client configs
+  qr              Show QR code for a client
+  qr-all          Show all QR codes
+  export          Export all client VLESS links
+
+Server Commands:
+  status          Show server status
   change-disguise Change disguised website
   change-port     Change server port
   regen-keys      Regenerate server keys
-  logs            Show recent logs
   restart         Restart Xray service
   test            Test configuration
+  logs            Show recent logs
   uninstall       Remove Xray completely
 
-Install options:
+Options:
   --port PORT         Server port (default: 443)
   --disguise DOMAIN   Disguised domain (default: www.apple.com)
-  --client NAME       First client name (default: default)
+  --client NAME       Client name (default: default)
+  --name NAME         Client name for operations
+  --new-name NAME     New name for rename operation
+  --domain DOMAIN     Domain for disguise change
 
 Examples:
   $0 install
   $0 install --port 443 --disguise www.microsoft.com --client myphone
   $0 add-client --name laptop
+  $0 rename-client --name laptop --new-name work-laptop
+  $0 qr --name laptop
+  $0 qr-all
   $0 change-disguise --domain www.google.com
   $0 manage
 
@@ -64,6 +78,7 @@ parse_args() {
     local disguise="$DEFAULT_SNI"
     local client_name="default"
     local name=""
+    local new_name=""
     local domain=""
 
     while [[ $# -gt 0 ]]; do
@@ -72,6 +87,7 @@ parse_args() {
             --disguise) disguise="$2"; shift 2 ;;
             --client) client_name="$2"; shift 2 ;;
             --name) name="$2"; shift 2 ;;
+            --new-name) new_name="$2"; shift 2 ;;
             --domain) domain="$2"; shift 2 ;;
             --help|-h) show_help; exit 0 ;;
             *) shift ;;
@@ -79,14 +95,17 @@ parse_args() {
     done
 
     case "$cmd" in
+        # Installation
         install)
             fresh_install "$port" "${disguise}:443" "$disguise" "$client_name"
             ;;
         manage)
             manage_server
             ;;
-        status)
-            show_status
+
+        # Client commands
+        list-clients)
+            list_clients
             ;;
         add-client)
             add_client "$name"
@@ -94,8 +113,11 @@ parse_args() {
         remove-client)
             remove_client "$name"
             ;;
-        list-clients)
-            list_clients
+        rename-client)
+            rename_client "$name" "$new_name"
+            ;;
+        reset-uuid)
+            reset_client_uuid "$name"
             ;;
         show-client)
             if [[ -z "$name" ]]; then
@@ -109,8 +131,19 @@ parse_args() {
                 log_error "Client not found"
             fi
             ;;
+        qr)
+            show_qr "$name"
+            ;;
+        qr-all)
+            show_all_qr
+            ;;
         export)
             export_clients
+            ;;
+
+        # Server commands
+        status)
+            show_status
             ;;
         change-disguise)
             if [[ -n "$domain" ]]; then
@@ -125,14 +158,14 @@ parse_args() {
         regen-keys)
             regenerate_keys
             ;;
-        logs)
-            show_logs
-            ;;
         restart)
             restart_service
             ;;
         test)
             test_config
+            ;;
+        logs)
+            show_logs
             ;;
         uninstall)
             uninstall_xray

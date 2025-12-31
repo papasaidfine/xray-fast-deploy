@@ -198,3 +198,167 @@ get_client_uuid() {
     local name="$1"
     jq -r ".inbounds[0].settings.clients[] | select(.email == \"$name\") | .id" "$CONFIG_FILE" 2>/dev/null
 }
+
+# Get client count
+get_client_count() {
+    jq '.inbounds[0].settings.clients | length' "$CONFIG_FILE" 2>/dev/null || echo 0
+}
+
+# Show QR code only (quick display)
+show_qr() {
+    local name="$1"
+
+    if [[ -z "$name" ]]; then
+        list_clients
+        read -p "Enter client name: " name
+    fi
+
+    local uuid=$(get_client_uuid "$name")
+    if [[ -z "$uuid" ]]; then
+        log_error "Client '$name' not found"
+        return 1
+    fi
+
+    load_server_info
+
+    local server_ip=$(get_server_ip)
+    local port=${PORT:-443}
+    local sni=${SNI:-www.apple.com}
+    local public_key=${PUBLIC_KEY:-""}
+    local short_id=""
+
+    if [[ -f "$CONFIG_FILE" ]]; then
+        short_id=$(jq -r '.inbounds[0].streamSettings.realitySettings.shortIds[1] // ""' "$CONFIG_FILE")
+    fi
+
+    if [[ -z "$public_key" && -f "$CONFIG_FILE" ]]; then
+        local private_key=$(jq -r '.inbounds[0].streamSettings.realitySettings.privateKey' "$CONFIG_FILE")
+        public_key=$(get_public_key "$private_key")
+    fi
+
+    local vless_link=$(generate_vless_link "$uuid" "$server_ip" "$port" "$public_key" "$sni" "$name" "$short_id")
+
+    echo ""
+    echo -e "${CYAN}=== QR Code: $name ===${NC}"
+    echo ""
+    qrencode -t ANSIUTF8 "$vless_link"
+    echo ""
+    echo -e "${YELLOW}VLESS Link:${NC}"
+    echo "$vless_link"
+    echo ""
+}
+
+# Show all QR codes
+show_all_qr() {
+    load_server_info
+
+    local server_ip=$(get_server_ip)
+    local port=${PORT:-443}
+    local sni=${SNI:-www.apple.com}
+    local public_key=${PUBLIC_KEY:-""}
+    local short_id=""
+
+    if [[ -f "$CONFIG_FILE" ]]; then
+        short_id=$(jq -r '.inbounds[0].streamSettings.realitySettings.shortIds[1] // ""' "$CONFIG_FILE")
+    fi
+
+    if [[ -z "$public_key" && -f "$CONFIG_FILE" ]]; then
+        local private_key=$(jq -r '.inbounds[0].streamSettings.realitySettings.privateKey' "$CONFIG_FILE")
+        public_key=$(get_public_key "$private_key")
+    fi
+
+    local count=$(get_client_count)
+    echo ""
+    echo -e "${CYAN}=== All Client QR Codes ($count clients) ===${NC}"
+
+    while IFS=: read -r email uuid; do
+        local vless_link=$(generate_vless_link "$uuid" "$server_ip" "$port" "$public_key" "$sni" "$email" "$short_id")
+        echo ""
+        echo -e "${YELLOW}--- $email ---${NC}"
+        qrencode -t ANSIUTF8 "$vless_link"
+        echo "$vless_link"
+        echo ""
+    done < <(get_clients)
+}
+
+# Rename client
+rename_client() {
+    local old_name="$1"
+    local new_name="$2"
+
+    if [[ -z "$old_name" ]]; then
+        list_clients
+        read -p "Enter current client name: " old_name
+    fi
+
+    if [[ -z "$old_name" ]]; then
+        log_error "No client name provided"
+        return 1
+    fi
+
+    # Check if client exists
+    if ! jq -e ".inbounds[0].settings.clients[] | select(.email == \"$old_name\")" "$CONFIG_FILE" >/dev/null 2>&1; then
+        log_error "Client '$old_name' not found"
+        return 1
+    fi
+
+    if [[ -z "$new_name" ]]; then
+        read -p "Enter new name: " new_name
+    fi
+
+    if [[ -z "$new_name" ]]; then
+        log_error "No new name provided"
+        return 1
+    fi
+
+    # Check if new name already exists
+    if jq -e ".inbounds[0].settings.clients[] | select(.email == \"$new_name\")" "$CONFIG_FILE" >/dev/null 2>&1; then
+        log_error "Client '$new_name' already exists"
+        return 1
+    fi
+
+    # Rename client
+    local tmp_file=$(mktemp)
+    jq "(.inbounds[0].settings.clients[] | select(.email == \"$old_name\") | .email) = \"$new_name\"" "$CONFIG_FILE" > "$tmp_file"
+    mv "$tmp_file" "$CONFIG_FILE"
+    chown xray:xray "$CONFIG_FILE"
+    chmod 600 "$CONFIG_FILE"
+
+    systemctl restart xray
+    log_success "Client renamed: '$old_name' -> '$new_name'"
+}
+
+# Reset client UUID (generate new UUID)
+reset_client_uuid() {
+    local name="$1"
+
+    if [[ -z "$name" ]]; then
+        list_clients
+        read -p "Enter client name: " name
+    fi
+
+    if [[ -z "$name" ]]; then
+        log_error "No client name provided"
+        return 1
+    fi
+
+    # Check if client exists
+    if ! jq -e ".inbounds[0].settings.clients[] | select(.email == \"$name\")" "$CONFIG_FILE" >/dev/null 2>&1; then
+        log_error "Client '$name' not found"
+        return 1
+    fi
+
+    local new_uuid=$(generate_uuid)
+
+    # Update UUID
+    local tmp_file=$(mktemp)
+    jq "(.inbounds[0].settings.clients[] | select(.email == \"$name\") | .id) = \"$new_uuid\"" "$CONFIG_FILE" > "$tmp_file"
+    mv "$tmp_file" "$CONFIG_FILE"
+    chown xray:xray "$CONFIG_FILE"
+    chmod 600 "$CONFIG_FILE"
+
+    systemctl restart xray
+    log_success "UUID reset for client '$name'"
+    echo ""
+    show_client_config "$new_uuid" "$name"
+}
