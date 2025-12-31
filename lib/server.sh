@@ -124,9 +124,11 @@ change_port() {
         sed -i "s/^PORT=.*/PORT=$new_port/" "$INFO_DIR/server.info"
     fi
 
+    # Update firewall
+    configure_firewall "$new_port"
+
     systemctl restart xray
     log_success "Port changed to: $new_port"
-    log_warn "Remember to update your firewall rules!"
 }
 
 # Show recent logs
@@ -156,6 +158,82 @@ start_service() {
 stop_service() {
     systemctl stop xray
     log_success "Service stopped"
+}
+
+# Check and fix firewall
+check_firewall() {
+    local port=$(jq -r '.inbounds[0].port' "$CONFIG_FILE" 2>/dev/null)
+
+    echo ""
+    echo -e "${CYAN}=== Firewall Diagnostics ===${NC}"
+    echo -e "${BLUE}Xray Port:${NC} $port"
+    echo ""
+
+    # Check iptables
+    echo -e "${YELLOW}[iptables]${NC}"
+    if command -v iptables &>/dev/null; then
+        local policy=$(iptables -L INPUT -n 2>/dev/null | head -1 | grep -oP 'policy \K\w+')
+        echo -e "  Default policy: ${BLUE}$policy${NC}"
+
+        if iptables -L INPUT -n 2>/dev/null | grep -q "dpt:$port"; then
+            echo -e "  Port $port: ${GREEN}ALLOWED${NC}"
+        else
+            echo -e "  Port $port: ${RED}NOT FOUND${NC}"
+        fi
+
+        if iptables -L INPUT -n 2>/dev/null | grep -qE "(REJECT|DROP).*0\.0\.0\.0/0.*0\.0\.0\.0/0"; then
+            echo -e "  Catch-all block rule: ${RED}YES${NC}"
+        else
+            echo -e "  Catch-all block rule: ${GREEN}NO${NC}"
+        fi
+    else
+        echo "  Not installed"
+    fi
+    echo ""
+
+    # Check firewalld
+    echo -e "${YELLOW}[firewalld]${NC}"
+    if systemctl is-active --quiet firewalld 2>/dev/null; then
+        echo -e "  Status: ${BLUE}active${NC}"
+        if firewall-cmd --list-ports 2>/dev/null | grep -q "$port/tcp"; then
+            echo -e "  Port $port: ${GREEN}ALLOWED${NC}"
+        else
+            echo -e "  Port $port: ${RED}NOT FOUND${NC}"
+        fi
+    else
+        echo "  Status: inactive"
+    fi
+    echo ""
+
+    # Check ufw
+    echo -e "${YELLOW}[ufw]${NC}"
+    if command -v ufw &>/dev/null && ufw status 2>/dev/null | grep -q "Status: active"; then
+        echo -e "  Status: ${BLUE}active${NC}"
+        if ufw status 2>/dev/null | grep -q "$port"; then
+            echo -e "  Port $port: ${GREEN}ALLOWED${NC}"
+        else
+            echo -e "  Port $port: ${RED}NOT FOUND${NC}"
+        fi
+    else
+        echo "  Status: inactive or not installed"
+    fi
+    echo ""
+
+    # Check port listening
+    echo -e "${YELLOW}[Port Status]${NC}"
+    if ss -tlnp 2>/dev/null | grep -q ":$port"; then
+        echo -e "  Port $port: ${GREEN}LISTENING${NC}"
+    else
+        echo -e "  Port $port: ${RED}NOT LISTENING${NC}"
+    fi
+    echo ""
+
+    # Offer to fix
+    read -p "Fix firewall issues? (y/n): " fix
+    if [[ "$fix" == "y" || "$fix" == "Y" ]]; then
+        configure_firewall "$port"
+        log_success "Firewall configured for port $port"
+    fi
 }
 
 # Change log level

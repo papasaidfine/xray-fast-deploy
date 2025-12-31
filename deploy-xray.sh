@@ -47,6 +47,7 @@ Server Commands:
   test            Test configuration
   logs            Show recent logs
   log-level       Change log level (none/error/warning/info/debug)
+  firewall        Check and fix firewall rules
   fix             Repair/regenerate server info file
   uninstall       Remove Xray completely
 
@@ -175,6 +176,9 @@ parse_args() {
             ;;
         log-level)
             change_log_level "$level"
+            ;;
+        firewall)
+            check_firewall
             ;;
         fix|repair)
             log_info "Regenerating server info..."

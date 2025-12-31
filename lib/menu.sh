@@ -31,9 +31,10 @@ show_menu() {
     echo " 16. Test configuration"
     echo " 17. View logs (last 50 lines)"
     echo " 18. Follow logs (live)"
+    echo " 19. Check/fix firewall"
     echo ""
     echo -e "${YELLOW}[ System ]${NC}"
-    echo " 19. Uninstall"
+    echo " 20. Uninstall"
     echo "  0. Exit"
     echo ""
 }
@@ -108,8 +109,11 @@ manage_server() {
             18)
                 follow_logs
                 ;;
-            # System
             19)
+                check_firewall
+                ;;
+            # System
+            20)
                 uninstall_xray
                 exit 0
                 ;;

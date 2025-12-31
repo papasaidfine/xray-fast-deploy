@@ -48,6 +48,54 @@ EOF
     log_success "Xray installed"
 }
 
+# Configure OS firewall to allow Xray port
+configure_firewall() {
+    local port="$1"
+    log_info "Configuring firewall for port $port..."
+
+    # Check if iptables has a REJECT/DROP rule that would block traffic
+    if iptables -L INPUT -n 2>/dev/null | grep -qE "(REJECT|DROP).*0\.0\.0\.0/0.*0\.0\.0\.0/0"; then
+        # Find the line number of the REJECT/DROP rule
+        local reject_line=$(iptables -L INPUT -n --line-numbers 2>/dev/null | grep -E "(REJECT|DROP).*0\.0\.0\.0/0.*0\.0\.0\.0/0" | head -1 | awk '{print $1}')
+
+        if [[ -n "$reject_line" ]]; then
+            # Check if port rule already exists
+            if ! iptables -L INPUT -n 2>/dev/null | grep -q "dpt:$port"; then
+                # Insert rule before REJECT/DROP
+                iptables -I INPUT "$reject_line" -p tcp --dport "$port" -m state --state NEW -j ACCEPT
+                log_success "Added iptables rule for port $port"
+            else
+                log_info "Port $port already allowed in iptables"
+            fi
+        fi
+    else
+        # No REJECT rule, check if we need to add ACCEPT anyway
+        if ! iptables -L INPUT -n 2>/dev/null | grep -q "dpt:$port"; then
+            iptables -A INPUT -p tcp --dport "$port" -j ACCEPT 2>/dev/null || true
+        fi
+    fi
+
+    # Handle firewalld if active
+    if systemctl is-active --quiet firewalld 2>/dev/null; then
+        firewall-cmd --add-port="$port/tcp" --permanent >/dev/null 2>&1
+        firewall-cmd --reload >/dev/null 2>&1
+        log_success "Added firewalld rule for port $port"
+    fi
+
+    # Handle ufw if active
+    if systemctl is-active --quiet ufw 2>/dev/null || ufw status 2>/dev/null | grep -q "Status: active"; then
+        ufw allow "$port/tcp" >/dev/null 2>&1
+        log_success "Added ufw rule for port $port"
+    fi
+
+    # Try to persist iptables rules
+    if command -v netfilter-persistent &>/dev/null; then
+        netfilter-persistent save >/dev/null 2>&1 || true
+    elif [[ -f /etc/iptables/rules.v4 ]]; then
+        iptables-save > /etc/iptables/rules.v4 2>/dev/null || true
+    fi
+}
+
 # Enable BBR congestion control
 enable_bbr() {
     log_info "Enabling BBR congestion control..."
@@ -115,6 +163,7 @@ fresh_install() {
     install_dependencies
     install_xray
     enable_bbr
+    configure_firewall "$port"
 
     # Generate credentials
     generate_keys
