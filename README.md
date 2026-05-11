@@ -2,6 +2,8 @@
 
 `xctl` is a local Go CLI/TUI for managing a bare-metal Xray `VLESS + TCP + REALITY + Vision` node over SSH.
 
+![xctl TUI dashboard](docs/screenshots/dashboard.png)
+
 ## Current Scope
 
 `xctl` manages an existing Xray installation. It does not install or auto-start Xray yet.
