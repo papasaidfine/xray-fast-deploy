@@ -46,6 +46,42 @@ func TestSafeConfigUpdateValidatesBeforeReplaceAndRestart(t *testing.T) {
 	}
 }
 
+func TestSafeConfigUpdatePreservesFileMode(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+	cfg := xray.NewRealityConfig(xray.ConfigOptions{
+		UUID:       "11111111-1111-4111-8111-111111111111",
+		PrivateKey: "private-key",
+		Dest:       "www.apple.com:443",
+		SNI:        "www.apple.com",
+		Port:       443,
+		ShortID:    "short-id",
+		ClientName: "phone",
+	})
+	if err := cfg.Save(path); err != nil {
+		t.Fatalf("save initial: %v", err)
+	}
+	if err := os.Chmod(path, 0644); err != nil {
+		t.Fatalf("chmod initial: %v", err)
+	}
+
+	runner := &FakeRunner{}
+	if err := SafeConfigUpdate(path, runner, func(cfg *xray.Config) error {
+		cfg.SetPort(8443)
+		return nil
+	}); err != nil {
+		t.Fatalf("safe update: %v", err)
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat: %v", err)
+	}
+	if info.Mode().Perm() != 0644 {
+		t.Fatalf("mode = %o, want 0644", info.Mode().Perm())
+	}
+}
+
 func TestSafeConfigUpdateDoesNotReplaceOrRestartWhenValidationFails(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
