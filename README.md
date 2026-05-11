@@ -121,7 +121,10 @@ sudo xctl firewall status
 sudo xctl firewall open --port 8443   # override port
 
 sudo xctl fix-perms            # restore <xray-user>:<xray-group> 0644 on the config
-sudo xctl update               # run XTLS official install-release.sh @ install
+
+xctl version                   # print current xctl version + check for newer release
+sudo xctl self-update          # download and replace /usr/local/bin/xctl with the latest release
+sudo xctl xray-update          # run XTLS official install-release.sh @ install (updates Xray itself)
 ```
 
 ## Doctor

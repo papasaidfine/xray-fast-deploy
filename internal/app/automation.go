@@ -4,13 +4,17 @@ import (
 	"bufio"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -20,6 +24,8 @@ import (
 	"github.com/lonelyrower/xray-fast-deploy/internal/serverinfo"
 	"github.com/lonelyrower/xray-fast-deploy/internal/xray"
 )
+
+const xctlReleaseAPI = "https://api.github.com/repos/papasaidfine/xray-fast-deploy/releases/latest"
 
 const (
 	xrayInstallURL  = "https://github.com/XTLS/Xray-install/raw/main/install-release.sh"
@@ -500,5 +506,219 @@ func sysctlGet(key string) string {
 		return "unknown"
 	}
 	return strings.TrimSpace(string(out))
+}
+
+// --------- xctl version / self-update ---------
+
+func (a *App) printVersion() error {
+	fmt.Fprintf(a.out, "xctl %s\n", a.version)
+	latest, _, err := fetchLatestRelease()
+	if err != nil {
+		fmt.Fprintf(a.out, "  (could not check for updates: %v)\n", err)
+		return nil
+	}
+	switch compareVersions(a.version, latest) {
+	case 0:
+		fmt.Fprintln(a.out, "  up to date")
+	case -1:
+		fmt.Fprintf(a.out, "  new version available: %s — run: sudo xctl self-update\n", latest)
+	default:
+		fmt.Fprintf(a.out, "  ahead of latest release %s\n", latest)
+	}
+	return nil
+}
+
+func (a *App) selfUpdate() error {
+	if err := requireRoot("self-update"); err != nil {
+		return err
+	}
+	latest, url, err := fetchLatestRelease()
+	if err != nil {
+		return fmt.Errorf("check latest release: %w", err)
+	}
+	if compareVersions(a.version, latest) == 0 {
+		fmt.Fprintf(a.out, "xctl is already at %s\n", latest)
+		return nil
+	}
+
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	exe, err = filepath.EvalSymlinks(exe)
+	if err != nil {
+		return err
+	}
+
+	dir := filepath.Dir(exe)
+	candidate, err := os.CreateTemp(dir, ".xctl-*")
+	if err != nil {
+		return fmt.Errorf("create temp file in %s: %w", dir, err)
+	}
+	candidatePath := candidate.Name()
+	defer os.Remove(candidatePath)
+
+	fmt.Fprintf(a.out, "downloading %s ...\n", url)
+	if err := download(url, candidate); err != nil {
+		candidate.Close()
+		return err
+	}
+	if err := candidate.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(candidatePath, 0o755); err != nil {
+		return err
+	}
+	if err := os.Rename(candidatePath, exe); err != nil {
+		return fmt.Errorf("replace %s: %w", exe, err)
+	}
+	fmt.Fprintf(a.out, "xctl updated to %s\n", latest)
+	return nil
+}
+
+type ghAsset struct {
+	Name string `json:"name"`
+	URL  string `json:"browser_download_url"`
+}
+
+type ghRelease struct {
+	TagName string    `json:"tag_name"`
+	Assets  []ghAsset `json:"assets"`
+}
+
+func fetchLatestRelease() (tag, assetURL string, err error) {
+	req, err := http.NewRequest(http.MethodGet, xctlReleaseAPI, nil)
+	if err != nil {
+		return "", "", err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	client := http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		return "", "", fmt.Errorf("github API returned %s", resp.Status)
+	}
+	var rel ghRelease
+	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
+		return "", "", err
+	}
+	if rel.TagName == "" {
+		return "", "", errors.New("no tag_name in release response")
+	}
+	want := fmt.Sprintf("xctl-linux-%s", runtime.GOARCH)
+	for _, a := range rel.Assets {
+		if a.Name == want {
+			return rel.TagName, a.URL, nil
+		}
+	}
+	return rel.TagName, "", fmt.Errorf("no asset named %s in release %s", want, rel.TagName)
+}
+
+func download(url string, dst io.Writer) error {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+	client := http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		return fmt.Errorf("download %s: %s", url, resp.Status)
+	}
+	_, err = io.Copy(dst, resp.Body)
+	return err
+}
+
+// compareVersions returns -1 if a<b, 0 if equal, 1 if a>b. "dev" sorts as
+// the lowest possible version so dev builds always see a new release as
+// newer. Numeric prerelease parts (e.g. "beta.10") are compared
+// numerically so "beta.10" > "beta.2".
+func compareVersions(a, b string) int {
+	if a == b {
+		return 0
+	}
+	if a == "dev" {
+		return -1
+	}
+	if b == "dev" {
+		return 1
+	}
+	aNums, aPre := splitVersion(a)
+	bNums, bPre := splitVersion(b)
+	for i := 0; i < len(aNums) || i < len(bNums); i++ {
+		var av, bv int
+		if i < len(aNums) {
+			av = aNums[i]
+		}
+		if i < len(bNums) {
+			bv = bNums[i]
+		}
+		if av != bv {
+			if av < bv {
+				return -1
+			}
+			return 1
+		}
+	}
+	if aPre == "" && bPre == "" {
+		return 0
+	}
+	if aPre == "" {
+		return 1
+	}
+	if bPre == "" {
+		return -1
+	}
+	aParts := strings.Split(aPre, ".")
+	bParts := strings.Split(bPre, ".")
+	for i := 0; i < len(aParts) || i < len(bParts); i++ {
+		if i >= len(aParts) {
+			return -1
+		}
+		if i >= len(bParts) {
+			return 1
+		}
+		ap, bp := aParts[i], bParts[i]
+		an, aErr := strconv.Atoi(ap)
+		bn, bErr := strconv.Atoi(bp)
+		if aErr == nil && bErr == nil {
+			if an != bn {
+				if an < bn {
+					return -1
+				}
+				return 1
+			}
+			continue
+		}
+		if ap != bp {
+			if ap < bp {
+				return -1
+			}
+			return 1
+		}
+	}
+	return 0
+}
+
+func splitVersion(v string) (nums []int, pre string) {
+	v = strings.TrimPrefix(v, "v")
+	if i := strings.IndexAny(v, "-+"); i >= 0 {
+		pre = v[i+1:]
+		v = v[:i]
+	}
+	for _, part := range strings.Split(v, ".") {
+		n, err := strconv.Atoi(part)
+		if err != nil {
+			return nums, pre
+		}
+		nums = append(nums, n)
+	}
+	return nums, pre
 }
 

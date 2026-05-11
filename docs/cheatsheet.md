@@ -213,12 +213,12 @@ user (default `xray:xray 0644`).
 
 ---
 
-## Reinstall / update Xray itself
+## Update Xray itself
 
 xctl shortcut:
 
 ```bash
-sudo xctl update
+sudo xctl xray-update
 ```
 
 Manual:
@@ -226,6 +226,13 @@ Manual:
 ```bash
 bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
 bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ remove
+```
+
+## Update xctl itself
+
+```bash
+xctl version                  # check current version, hints if there's a newer one
+sudo xctl self-update         # fetch latest release for this arch and replace /usr/local/bin/xctl
 ```
 
 ## First-time setup

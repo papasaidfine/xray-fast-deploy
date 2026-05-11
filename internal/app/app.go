@@ -29,6 +29,7 @@ type Config struct {
 	InfoPath   string
 	Out        io.Writer
 	Runner     system.ConfigRunner
+	Version    string
 }
 
 type App struct {
@@ -36,6 +37,7 @@ type App struct {
 	infoPath   string
 	out        io.Writer
 	runner     system.ConfigRunner
+	version    string
 }
 
 func New(cfg Config) *App {
@@ -51,7 +53,10 @@ func New(cfg Config) *App {
 	if cfg.Runner == nil {
 		cfg.Runner = system.Runner{}
 	}
-	return &App{configPath: cfg.ConfigPath, infoPath: cfg.InfoPath, out: cfg.Out, runner: cfg.Runner}
+	if cfg.Version == "" {
+		cfg.Version = "dev"
+	}
+	return &App{configPath: cfg.ConfigPath, infoPath: cfg.InfoPath, out: cfg.Out, runner: cfg.Runner, version: cfg.Version}
 }
 
 func (a *App) Run(args []string) error {
@@ -101,8 +106,12 @@ func (a *App) Run(args []string) error {
 		return a.firewallCmd(args[1:])
 	case "fix-perms":
 		return a.fixPerms()
-	case "update":
+	case "xray-update":
 		return a.updateXray()
+	case "self-update":
+		return a.selfUpdate()
+	case "version", "--version", "-v":
+		return a.printVersion()
 	case "tui":
 		return ErrTUIRequested
 	default:
@@ -285,7 +294,9 @@ Commands:
   forward <enable|disable|status>
   firewall <open|close|status> [--port N]
   fix-perms
-  update`)
+  version
+  self-update
+  xray-update`)
 }
 
 func (a *App) listClients() error {

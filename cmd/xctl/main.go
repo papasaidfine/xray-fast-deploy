@@ -10,8 +10,11 @@ import (
 	"github.com/lonelyrower/xray-fast-deploy/internal/tui"
 )
 
+// version is set via -ldflags="-X main.version=..." at release build time.
+var version = "dev"
+
 func main() {
-	a := app.New(app.Config{})
+	a := app.New(app.Config{Version: version})
 	if err := a.Run(os.Args[1:]); err != nil {
 		if errors.Is(err, app.ErrTUIRequested) {
 			if _, runErr := tea.NewProgram(tui.New(a)).Run(); runErr != nil {
