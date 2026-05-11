@@ -15,23 +15,22 @@ Expected system state:
 
 ## Install
 
-Download a Linux release asset and install it for your user:
+Install the latest release to `~/.local/bin`:
 
 ```bash
-mkdir -p ~/.local/bin
-install -m 0755 xctl-linux-amd64 ~/.local/bin/xctl
+curl -fsSL https://raw.githubusercontent.com/papasaidfine/xray-fast-deploy/main/scripts/install.sh | bash
+```
+
+System-wide (`/usr/local/bin`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/papasaidfine/xray-fast-deploy/main/scripts/install.sh | sudo bash
 ```
 
 Build from source:
 
 ```bash
 go build -o xctl ./cmd/xctl
-```
-
-To install system-wide instead:
-
-```bash
-sudo install -m 0755 xctl-linux-amd64 /usr/local/bin/xctl
 ```
 
 ## Sudo
