@@ -70,6 +70,14 @@ sudo xctl
 sudo xctl tui
 ```
 
+The TUI is interactive. Keybindings:
+
+- `Tab` / `←` `→` — switch tabs
+- `↑` `↓` — move cursor on the Clients tab
+- Clients tab: `a` add, `d` delete, `R` rename, `u` reset UUID, `s` show VLESS link, `r` refresh
+- Server tab: `p` change port, `D` change disguise domain, `A` change saved address, `t` test config, `X` restart xray, `r` refresh
+- `Esc` cancels an input or confirm prompt; `q` or `Ctrl+C` quits
+
 CLI:
 
 ```bash

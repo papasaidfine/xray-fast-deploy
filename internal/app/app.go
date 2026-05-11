@@ -101,6 +101,114 @@ func (a *App) Run(args []string) error {
 
 var ErrTUIRequested = errors.New("tui requested")
 
+func (a *App) Data() tui.ModelData {
+	return a.TUIData()
+}
+
+func (a *App) AddClientTUI(name string) error {
+	if name == "" {
+		return errors.New("name is required")
+	}
+	id := newUUID()
+	return system.SafeConfigUpdate(a.configPath, a.runner, func(cfg *xray.Config) error {
+		return cfg.AddClient(xray.Client{ID: id, Email: name})
+	})
+}
+
+func (a *App) RemoveClientTUI(name string) error {
+	if name == "" {
+		return errors.New("name is required")
+	}
+	return system.SafeConfigUpdate(a.configPath, a.runner, func(cfg *xray.Config) error {
+		return cfg.RemoveClient(name)
+	})
+}
+
+func (a *App) RenameClientTUI(oldName, newName string) error {
+	if oldName == "" || newName == "" {
+		return errors.New("both names are required")
+	}
+	return system.SafeConfigUpdate(a.configPath, a.runner, func(cfg *xray.Config) error {
+		return cfg.RenameClient(oldName, newName)
+	})
+}
+
+func (a *App) ResetUUIDTUI(name string) error {
+	if name == "" {
+		return errors.New("name is required")
+	}
+	id := newUUID()
+	return system.SafeConfigUpdate(a.configPath, a.runner, func(cfg *xray.Config) error {
+		return cfg.ResetClientUUID(name, id)
+	})
+}
+
+func (a *App) ChangePortTUI(port int) error {
+	if port < 1 || port > 65535 {
+		return errors.New("port must be 1-65535")
+	}
+	return system.SafeConfigUpdate(a.configPath, a.runner, func(cfg *xray.Config) error {
+		cfg.SetPort(port)
+		return nil
+	})
+}
+
+func (a *App) ChangeDisguiseTUI(domain string) error {
+	if domain == "" {
+		return errors.New("domain is required")
+	}
+	return system.SafeConfigUpdate(a.configPath, a.runner, func(cfg *xray.Config) error {
+		cfg.SetDisguise(domain+":443", domain)
+		return nil
+	})
+}
+
+func (a *App) SetServerAddressTUI(address string) error {
+	if address == "" {
+		return errors.New("address is required")
+	}
+	info, _ := serverinfo.Load(a.infoPath)
+	info.Address = address
+	if info.Port == 0 {
+		info.Port = 443
+	}
+	return serverinfo.Save(a.infoPath, info)
+}
+
+func (a *App) TestTUI() error {
+	return a.runner.TestConfig(a.configPath)
+}
+
+func (a *App) RestartTUI() error {
+	return a.runner.RestartService()
+}
+
+func (a *App) ClientLinkTUI(name string) (string, error) {
+	if name == "" {
+		return "", errors.New("name is required")
+	}
+	cfg, err := xray.LoadConfig(a.configPath)
+	if err != nil {
+		return "", err
+	}
+	info, _ := serverinfo.Load(a.infoPath)
+	address := serverinfo.ResolveAddress(info, detectPublicIPv4)
+	for _, client := range cfg.Clients() {
+		if client.Email == name {
+			return link.GenerateVLESS(link.Link{
+				UUID:      client.ID,
+				Address:   address,
+				Port:      cfg.Port(),
+				PublicKey: info.PublicKey,
+				SNI:       cfg.SNI(),
+				Name:      client.Email,
+				ShortID:   cfg.ShortID(),
+			}), nil
+		}
+	}
+	return "", fmt.Errorf("client %q not found", name)
+}
+
 func (a *App) TUIData() tui.ModelData {
 	data := tui.ModelData{
 		Service:      systemctlActive("xray"),

@@ -14,7 +14,7 @@ func main() {
 	a := app.New(app.Config{})
 	if err := a.Run(os.Args[1:]); err != nil {
 		if errors.Is(err, app.ErrTUIRequested) {
-			if _, runErr := tea.NewProgram(tui.New(a.TUIData())).Run(); runErr != nil {
+			if _, runErr := tea.NewProgram(tui.New(a)).Run(); runErr != nil {
 				fmt.Fprintln(os.Stderr, runErr)
 				os.Exit(1)
 			}
