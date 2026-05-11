@@ -13,6 +13,7 @@ import (
 
 	"github.com/lonelyrower/xray-fast-deploy/internal/doctor"
 	"github.com/lonelyrower/xray-fast-deploy/internal/link"
+	"github.com/lonelyrower/xray-fast-deploy/internal/qr"
 	"github.com/lonelyrower/xray-fast-deploy/internal/serverinfo"
 	"github.com/lonelyrower/xray-fast-deploy/internal/system"
 	"github.com/lonelyrower/xray-fast-deploy/internal/tui"
@@ -79,7 +80,7 @@ func (a *App) Run(args []string) error {
 	case "show-client":
 		return a.showClient(args[1:])
 	case "export":
-		return a.export()
+		return a.export(args[1:])
 	case "status":
 		return a.status()
 	case "doctor":
@@ -301,8 +302,11 @@ Clients:
                               rename a client.
   reset-uuid --name NAME [--uuid UUID]
                               rotate a client's UUID.
-  show-client --name NAME     print the VLESS link for one client.
-  export                      print VLESS links for every client.
+  show-client --name NAME [--qr]
+                              print the VLESS link for one client.
+                              --qr also renders a terminal QR code.
+  export [--qr]               print VLESS links for every client.
+                              --qr also renders a QR code per client.
 
 Server settings (all atomic: write candidate, xray -test, replace, restart):
   change-port --port PORT
@@ -420,9 +424,15 @@ func (a *App) resetUUID(args []string) error {
 }
 
 func (a *App) showClient(args []string) error {
-	name, err := requiredName("show-client", args)
-	if err != nil {
+	fs := flag.NewFlagSet("show-client", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	name := fs.String("name", "", "client name")
+	withQR := fs.Bool("qr", false, "also print a terminal QR code for the link")
+	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if *name == "" {
+		return errors.New("--name is required")
 	}
 	cfg, err := xray.LoadConfig(a.configPath)
 	if err != nil {
@@ -431,8 +441,8 @@ func (a *App) showClient(args []string) error {
 	info, _ := serverinfo.Load(a.infoPath)
 	address := serverinfo.ResolveAddress(info, detectPublicIPv4)
 	for _, client := range cfg.Clients() {
-		if client.Email == name {
-			fmt.Fprintln(a.out, link.GenerateVLESS(link.Link{
+		if client.Email == *name {
+			vless := link.GenerateVLESS(link.Link{
 				UUID:      client.ID,
 				Address:   address,
 				Port:      cfg.Port(),
@@ -440,14 +450,26 @@ func (a *App) showClient(args []string) error {
 				SNI:       cfg.SNI(),
 				Name:      client.Email,
 				ShortID:   cfg.ShortID(),
-			}))
+			})
+			fmt.Fprintln(a.out, vless)
+			if *withQR {
+				if err := a.printQR(vless); err != nil {
+					return err
+				}
+			}
 			return nil
 		}
 	}
-	return fmt.Errorf("client %q not found", name)
+	return fmt.Errorf("client %q not found", *name)
 }
 
-func (a *App) export() error {
+func (a *App) export(args []string) error {
+	fs := flag.NewFlagSet("export", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	withQR := fs.Bool("qr", false, "also print a terminal QR code per client")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
 	cfg, err := xray.LoadConfig(a.configPath)
 	if err != nil {
 		return err
@@ -455,7 +477,7 @@ func (a *App) export() error {
 	info, _ := serverinfo.Load(a.infoPath)
 	address := serverinfo.ResolveAddress(info, detectPublicIPv4)
 	for _, client := range cfg.Clients() {
-		fmt.Fprintf(a.out, "%s\n%s\n", client.Email, link.GenerateVLESS(link.Link{
+		vless := link.GenerateVLESS(link.Link{
 			UUID:      client.ID,
 			Address:   address,
 			Port:      cfg.Port(),
@@ -463,7 +485,13 @@ func (a *App) export() error {
 			SNI:       cfg.SNI(),
 			Name:      client.Email,
 			ShortID:   cfg.ShortID(),
-		}))
+		})
+		fmt.Fprintf(a.out, "%s\n%s\n", client.Email, vless)
+		if *withQR {
+			if err := a.printQR(vless); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -584,6 +612,15 @@ func (a *App) logs(args []string) error {
 	cmd.Stdout = a.out
 	cmd.Stderr = a.out
 	return cmd.Run()
+}
+
+func (a *App) printQR(content string) error {
+	out, err := qr.Render(content)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(a.out, out)
+	return nil
 }
 
 func wrapPermErr(err error, path string) error {

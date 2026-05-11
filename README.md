@@ -65,7 +65,7 @@ The TUI is interactive. Keybindings:
 
 - `Tab` / `←` `→` / `h` `l` — switch tabs (vim-style hjkl supported)
 - `↑` `↓` / `j` `k` — move cursor on the Clients tab; `g`/`G` jump to top/bottom
-- Clients tab: `a` add, `d` delete, `R` rename, `u` reset UUID, `s` show VLESS link, `r` refresh
+- Clients tab: `a` add, `d` delete, `R` rename, `u` reset UUID, `s` show VLESS link (with QR), `r` refresh
 - Server tab: `p` change port, `D` change disguise domain, `A` change saved address, `t` test config, `X` restart xray, `r` refresh
 - Tools tab: `b` toggle BBR, `f` toggle IP forwarding, `w` toggle firewall (current Xray port), `P` fix config perms, `r` refresh
 - `Esc` cancels an input or confirm prompt; `q` or `Ctrl+C` quits
@@ -81,7 +81,9 @@ xctl remove-client --name phone
 xctl rename-client --name phone --new-name tablet
 xctl reset-uuid --name tablet
 xctl show-client --name tablet
+xctl show-client --name tablet --qr        # also render QR for phone import
 xctl export
+xctl export --qr                           # QR per client
 xctl change-port --port 8443
 xctl change-disguise --domain www.apple.com
 xctl server-address --address vpn.example.com

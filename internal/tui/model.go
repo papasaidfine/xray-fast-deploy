@@ -7,6 +7,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/lonelyrower/xray-fast-deploy/internal/qr"
 )
 
 type ModelData struct {
@@ -80,6 +82,7 @@ type Model struct {
 
 	linkName string
 	linkText string
+	linkQR   string
 
 	renameOld string
 }
@@ -147,6 +150,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.pending = pendingNone
 		m.linkName = msg.name
 		m.linkText = msg.link
+		if q, err := qr.Render(msg.link); err == nil {
+			m.linkQR = q
+		} else {
+			m.linkQR = ""
+		}
 		return m, nil
 	case tea.KeyMsg:
 		return m.handleKey(msg)
@@ -168,6 +176,7 @@ func (m Model) handleKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.mode = modeNormal
 		m.linkName = ""
 		m.linkText = ""
+		m.linkQR = ""
 		return m, nil
 	case modeBusy:
 		return m, nil
@@ -481,7 +490,7 @@ func (m Model) View() string {
 
 func (m Model) footer() string {
 	if m.mode == modeShowLink {
-		return fmt.Sprintf("%s\n\n%s\n\nPress any key to continue.", m.linkName, m.linkText)
+		return fmt.Sprintf("%s\n\n%s\n\n%s\nPress any key to continue.", m.linkName, m.linkText, m.linkQR)
 	}
 	if m.mode == modeInput {
 		return m.prompt + m.input + "_  (Enter: submit  Esc: cancel)"
