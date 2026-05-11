@@ -30,9 +30,16 @@ ${SUDO} mkdir -p "$(dirname "${DEST}")"
 ${SUDO} curl -fsSL -o "${DEST}" "${URL}"
 ${SUDO} chmod 0755 "${DEST}"
 
-echo "Installed: $(${DEST} --version 2>/dev/null || echo "${DEST}")"
+echo "Installed xctl at ${DEST}"
 
+BIN_DIR="$(dirname "${DEST}")"
 case ":${PATH}:" in
-  *":$(dirname "${DEST}"):"*) ;;
-  *) echo "warning: $(dirname "${DEST}") is not on your PATH" >&2 ;;
+  *":${BIN_DIR}:"*) ;;
+  *)
+    echo
+    echo "${BIN_DIR} is not on your PATH. Add it with:"
+    echo
+    echo "    echo 'export PATH=\"${BIN_DIR}:\$PATH\"' >> ~/.bashrc && source ~/.bashrc"
+    echo
+    ;;
 esac
