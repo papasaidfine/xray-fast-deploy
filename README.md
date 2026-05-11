@@ -4,216 +4,105 @@
 
 ![xctl TUI dashboard](docs/screenshots/dashboard.png)
 
-## Current Scope
-
-`xctl` manages an existing Xray installation. It does not install or auto-start Xray yet.
-
-Expected system state:
-
-- Xray binary exists, usually `/usr/local/bin/xray`
-- systemd service is named `xray`
-- server config exists at `/usr/local/etc/xray/config.json`
-- server metadata exists at `/root/.xray-reality/server.info`
-
 ## Install
 
-Installs xctl to `/usr/local/bin/xctl`:
+Installs `xctl` to `/usr/local/bin/xctl`:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/papasaidfine/xray-fast-deploy/main/scripts/install.sh | sudo bash
 ```
 
-Build from source:
-
-```bash
-go build -o xctl ./cmd/xctl
-sudo install -m 0755 xctl /usr/local/bin/xctl
-```
-
-## Sudo
-
-`xctl` reads and writes root-owned Xray files (`/usr/local/etc/xray/config.json` and `/root/.xray-reality/server.info`) and calls `systemctl restart xray`, so all real use needs root:
-
-```bash
-sudo xctl
-sudo xctl doctor
-sudo xctl add-client --name phone
-sudo xctl export
-```
-
-Write/service commands:
-
-- `add-client`
-- `remove-client`
-- `rename-client`
-- `reset-uuid`
-- `change-port`
-- `change-disguise`
-- `server-address`
-- `test`
-- `restart`
-
-## Usage
-
-Open the TUI:
-
-```bash
-sudo xctl
-# or
-sudo xctl tui
-```
-
-The TUI is interactive. Keybindings:
-
-- `Tab` / `←` `→` / `h` `l` — switch tabs (vim-style hjkl supported)
-- `↑` `↓` / `j` `k` — move cursor on the Clients tab; `g`/`G` jump to top/bottom
-- Clients tab: `a` add, `d` delete, `R` rename, `u` reset UUID, `s` show VLESS link (with QR), `r` refresh
-- Server tab: `p` change port, `D` change disguise domain, `A` change saved address, `t` test config, `X` restart xray, `r` refresh
-- Tools tab: `b` toggle BBR, `f` toggle IP forwarding, `w` toggle firewall (current Xray port), `P` fix config perms, `r` refresh
-- `Esc` cancels an input or confirm prompt; `q` or `Ctrl+C` quits
-
-CLI:
-
-```bash
-xctl status
-xctl doctor
-xctl list-clients
-xctl add-client --name phone
-xctl remove-client --name phone
-xctl rename-client --name phone --new-name tablet
-xctl reset-uuid --name tablet
-xctl show-client --name tablet
-xctl show-client --name tablet --qr        # also render QR for phone import
-xctl export
-xctl export --qr                           # QR per client
-xctl change-port --port 8443
-xctl change-disguise --domain www.apple.com
-xctl server-address --address vpn.example.com
-xctl test
-xctl restart
-xctl logs --lines 50
-xctl logs -f                                # follow (tail -f) the xray journal
-```
+`xctl` reads and writes root-owned Xray files (`/usr/local/etc/xray/config.json`, `/root/.xray-reality/server.info`) and calls `systemctl restart xray`, so every command except `xctl version` needs `sudo`.
 
 ## First-time setup
 
 On a fresh VPS:
 
 ```bash
-sudo xctl init                              # installs Xray if missing, generates config, restarts
-# or with explicit options:
-sudo xctl init --sni www.apple.com --port 443 --name phone
+sudo xctl init                                          # installs Xray if missing, generates config, restarts
+sudo xctl init --sni www.apple.com --port 443 --name phone   # explicit options
 ```
 
-`init` prints the initial VLESS link. Defaults: SNI `www.microsoft.com`, port `443`, client name `default`. Refuses to overwrite an existing config unless `--force` is passed.
+`init` prints the initial VLESS link. Defaults: SNI `www.microsoft.com`, port `443`, client name `default`. It refuses to overwrite an existing config unless you pass `--force`.
 
-## System automation
-
-xctl wraps the common system-level tweaks so you don't have to remember the commands:
+## TUI
 
 ```bash
-sudo xctl bbr enable           # enable BBR + fq qdisc, persistent
-sudo xctl bbr disable
-sudo xctl bbr status
+sudo xctl                          # opens the TUI by default
+sudo xctl tui                      # same thing
+```
 
-sudo xctl forward enable       # net.ipv4.ip_forward=1
-sudo xctl forward disable
-sudo xctl forward status
+Keybindings:
 
-sudo xctl firewall open        # open current Xray port (auto-detects ufw/firewalld/iptables)
-sudo xctl firewall close
-sudo xctl firewall status
-sudo xctl firewall open --port 8443   # override port
+- `Tab` / `←` `→` / `h` `l` — switch tabs (vim-style hjkl supported)
+- `↑` `↓` / `j` `k` — move cursor on the Clients tab; `g`/`G` jump to top/bottom
+- Clients tab: `a` add, `d` delete, `R` rename, `u` reset UUID, `s` show VLESS link with QR, `r` refresh
+- Server tab: `p` port, `D` disguise domain, `A` saved address, `t` test config, `X` restart xray, `r` refresh
+- Tools tab: `b` toggle BBR, `f` toggle IP forwarding, `w` toggle firewall, `P` fix config perms, `r` refresh
+- `Esc` cancels input/confirm prompts; `q` or `Ctrl+C` quits
 
-sudo xctl fix-perms            # restore <xray-user>:<xray-group> 0644 on the config
+## CLI
 
-xctl version                   # print current xctl version + check for newer release
-sudo xctl install              # download latest xctl release and replace /usr/local/bin/xctl
-sudo xctl xray-update          # update Xray itself (runs XTLS official install-release.sh)
+```bash
+sudo xctl status
+sudo xctl doctor
+sudo xctl list-clients
+sudo xctl add-client --name phone
+sudo xctl remove-client --name phone
+sudo xctl rename-client --name phone --new-name tablet
+sudo xctl reset-uuid --name tablet
+sudo xctl show-client --name tablet --qr               # link + scannable QR
+sudo xctl export --qr                                  # all clients
+sudo xctl change-port --port 8443
+sudo xctl change-disguise --domain www.apple.com
+sudo xctl server-address --address vpn.example.com
+sudo xctl test
+sudo xctl restart
+sudo xctl logs --lines 50
+sudo xctl logs -f                                      # follow (tail -f)
+```
+
+Run `xctl --help` for the full command list with descriptions.
+
+## System tweaks
+
+xctl wraps the common system-level fixes so you don't have to remember the commands:
+
+```bash
+sudo xctl bbr enable | disable | status                # persistent BBR + fq qdisc
+sudo xctl forward enable | disable | status            # net.ipv4.ip_forward
+sudo xctl firewall open | close | status [--port N]    # auto-detects ufw/firewalld/iptables
+sudo xctl fix-perms                                    # restore <xray-user>:<group> 0644 on config
+
+xctl version                                           # check current vs. latest release
+sudo xctl install                                      # update xctl itself
+sudo xctl xray-update                                  # update Xray via the official XTLS installer
 ```
 
 ## Doctor
 
-`xctl doctor` runs local diagnostics and prints `ok`, `warn`, or `fail` results with short repair advice.
+`xctl doctor` prints `ok` / `warn` / `fail` for each check with a short repair hint:
 
-Checks:
+- Xray binary, service, config file, `xray -test`, listening port
+- Local firewall (`ufw` / `firewalld` / `iptables`)
+- BBR congestion control, default qdisc, `tcp_bbr` module
+- Saved server address vs. detected public IPv4
+- Recent service errors from `journalctl`
+- Disk space for logs, system time sanity, IP forwarding
 
-- Xray binary exists
-- Xray systemd service is active
-- config file exists
-- `xray run -test -config ...` passes
-- configured port is listening
-- local firewall state where detectable: `ufw`, `firewalld`, `iptables`
-- BBR congestion control, default qdisc, and `tcp_bbr` module
-- saved server address compared with detected public IPv4
-- recent Xray service errors from `journalctl`
-- log disk space
-- system time sanity
-- Linux IP forwarding state
+Disabled IP forwarding is normal for VLESS-only mode. Cloud security groups (AWS / GCP / Oracle / etc.) cannot be seen from inside the VPS — check the provider's console if the port is open locally but still unreachable.
 
-Disabled IP forwarding is normal for this proxy mode. Cloud security groups cannot be verified from inside the VPS.
-
-## Cheatsheet
-
-See [docs/cheatsheet.md](docs/cheatsheet.md) for copy-pasteable commands covering everything `doctor` checks: enable/disable BBR, IP forwarding, open firewall ports (ufw/firewalld/iptables), inspect logs and disk space, restart Xray, etc.
-
-## Safety Model
-
-Config-changing operations follow the same pipeline:
-
-1. Read `/usr/local/etc/xray/config.json`
-2. Write a temporary candidate config
-3. Run `xray run -test -config <candidate>`
-4. Atomically replace the active config
-5. Restart Xray through systemd
-
-If validation fails, the active config is left untouched and Xray is not restarted.
-
-## VPS IP Changes
-
-After a VPS IP change, update the saved address and re-export client links.
+## After a VPS IP change
 
 ```bash
 sudo xctl server-address --address vpn.example.com
 sudo xctl export
 ```
 
-## Server Metadata
+## Cheatsheet
 
-`xctl` reads `/root/.xray-reality/server.info` for values used in client links:
+[`docs/cheatsheet.md`](docs/cheatsheet.md) has copy-pasteable manual equivalents for everything `xctl` automates (raw `sysctl`, `ufw`, `firewalld`, `iptables`, `journalctl` commands), plus a few extras (NTP, disk vacuuming).
 
-```text
-PUBLIC_KEY="..."
-PORT="443"
-SNI="www.apple.com"
-SERVER_IP="vpn.example.com"
-CREATED="2026-05-11 00:00:00"
-```
+## Safety
 
-Use `server-address` to update the address embedded in exported VLESS links:
-
-```bash
-sudo xctl server-address --address vpn.example.com
-```
-
-## Project Layout
-
-```text
-cmd/xctl/               binary entrypoint
-internal/app/           CLI dispatcher and app orchestration
-internal/xray/          structured Xray config operations
-internal/link/          VLESS link generation
-internal/serverinfo/    saved server metadata
-internal/system/        system command runner and safe config update pipeline
-internal/doctor/        diagnostic result model
-internal/tui/           Bubble Tea TUI model
-```
-
-## Development
-
-```bash
-go test ./...
-go build ./cmd/xctl
-```
-
-Tagged releases publish Linux `amd64` and `arm64` binaries through GitHub Actions.
+All config-changing operations write a temporary candidate, run `xray -test` against it, and atomically replace the active config before restarting Xray. If the test fails, the live config is left untouched and the service is not restarted.
