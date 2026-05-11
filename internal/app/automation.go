@@ -10,7 +10,10 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/user"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/lonelyrower/xray-fast-deploy/internal/link"
@@ -440,6 +443,49 @@ func (a *App) updateXray() error {
 }
 
 // --------- helpers ---------
+
+func describeConfigPerms(path string) string {
+	info, err := os.Stat(path)
+	if err != nil {
+		return "unknown"
+	}
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		return fmt.Sprintf("%#o", info.Mode().Perm())
+	}
+	owner := strconv.Itoa(int(stat.Uid))
+	group := strconv.Itoa(int(stat.Gid))
+	if u, err := user.LookupId(owner); err == nil {
+		owner = u.Username
+	}
+	if g, err := user.LookupGroupId(group); err == nil {
+		group = g.Name
+	}
+	return fmt.Sprintf("%s:%s %#o", owner, group, info.Mode().Perm())
+}
+
+// TUI wrappers — these are what tui.Service calls. They delegate to the
+// CLI implementations (which include root checks).
+
+func (a *App) BBREnableTUI() error      { return a.bbrEnable() }
+func (a *App) BBRDisableTUI() error     { return a.bbrDisable() }
+func (a *App) ForwardEnableTUI() error  { return a.forwardEnable() }
+func (a *App) ForwardDisableTUI() error { return a.forwardDisable() }
+func (a *App) FirewallOpenTUI() error {
+	cfg, err := xray.LoadConfig(a.configPath)
+	if err != nil {
+		return err
+	}
+	return a.firewallOpen(cfg.Port())
+}
+func (a *App) FirewallCloseTUI() error {
+	cfg, err := xray.LoadConfig(a.configPath)
+	if err != nil {
+		return err
+	}
+	return a.firewallClose(cfg.Port())
+}
+func (a *App) FixPermsTUI() error { return a.fixPerms() }
 
 func requireRoot(cmd string) error {
 	if os.Geteuid() == 0 {

@@ -63,10 +63,11 @@ sudo xctl tui
 
 The TUI is interactive. Keybindings:
 
-- `Tab` / `←` `→` — switch tabs
-- `↑` `↓` — move cursor on the Clients tab
+- `Tab` / `←` `→` / `h` `l` — switch tabs (vim-style hjkl supported)
+- `↑` `↓` / `j` `k` — move cursor on the Clients tab; `g`/`G` jump to top/bottom
 - Clients tab: `a` add, `d` delete, `R` rename, `u` reset UUID, `s` show VLESS link, `r` refresh
 - Server tab: `p` change port, `D` change disguise domain, `A` change saved address, `t` test config, `X` restart xray, `r` refresh
+- Tools tab: `b` toggle BBR, `f` toggle IP forwarding, `w` toggle firewall (current Xray port), `P` fix config perms, `r` refresh
 - `Esc` cancels an input or confirm prompt; `q` or `Ctrl+C` quits
 
 CLI:

@@ -247,6 +247,16 @@ func (a *App) TUIData() tui.ModelData {
 	if info, err := serverinfo.Load(a.infoPath); err == nil {
 		data.Address = info.Address
 	}
+	data.Forwarding = sysctlGet("net.ipv4.ip_forward")
+	if data.Port > 0 {
+		fw := firewallProbe(data.Port)
+		data.FirewallStatus = fw.Status
+		data.FirewallDetail = fw.Detail
+	} else {
+		data.FirewallStatus = "unknown"
+		data.FirewallDetail = "no port configured"
+	}
+	data.ConfigPerms = describeConfigPerms(a.configPath)
 	return data
 }
 

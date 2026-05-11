@@ -42,13 +42,20 @@ func (f *fakeService) ChangePortTUI(port int) error {
 	f.portCalled = port
 	return nil
 }
-func (f *fakeService) ChangeDisguiseTUI(string) error    { return nil }
-func (f *fakeService) SetServerAddressTUI(string) error  { return nil }
-func (f *fakeService) TestTUI() error                    { return nil }
-func (f *fakeService) RestartTUI() error                 { return nil }
+func (f *fakeService) ChangeDisguiseTUI(string) error   { return nil }
+func (f *fakeService) SetServerAddressTUI(string) error { return nil }
+func (f *fakeService) TestTUI() error                   { return nil }
+func (f *fakeService) RestartTUI() error                { return nil }
 func (f *fakeService) ClientLinkTUI(name string) (string, error) {
 	return f.linkResult, f.linkErr
 }
+func (f *fakeService) BBREnableTUI() error      { return nil }
+func (f *fakeService) BBRDisableTUI() error     { return nil }
+func (f *fakeService) ForwardEnableTUI() error  { return nil }
+func (f *fakeService) ForwardDisableTUI() error { return nil }
+func (f *fakeService) FirewallOpenTUI() error   { return nil }
+func (f *fakeService) FirewallCloseTUI() error  { return nil }
+func (f *fakeService) FixPermsTUI() error       { return nil }
 
 func newModel(svc Service) Model { return New(svc) }
 

@@ -12,4 +12,11 @@ type Service interface {
 	TestTUI() error
 	RestartTUI() error
 	ClientLinkTUI(name string) (string, error)
+	BBREnableTUI() error
+	BBRDisableTUI() error
+	ForwardEnableTUI() error
+	ForwardDisableTUI() error
+	FirewallOpenTUI() error
+	FirewallCloseTUI() error
+	FixPermsTUI() error
 }

@@ -10,18 +10,22 @@ import (
 )
 
 type ModelData struct {
-	Service      string
-	Version      string
-	Port         int
-	SNI          string
-	Address      string
-	ClientCount  int
-	BBR          string
-	ConfigStatus string
-	Clients      []Client
-	Doctor       []string
-	Logs         []string
-	LoadError    string
+	Service        string
+	Version        string
+	Port           int
+	SNI            string
+	Address        string
+	ClientCount    int
+	BBR            string
+	ConfigStatus   string
+	Clients        []Client
+	Doctor         []string
+	Logs           []string
+	LoadError      string
+	Forwarding     string
+	FirewallStatus string
+	FirewallDetail string
+	ConfigPerms    string
 }
 
 type Client struct {
@@ -53,6 +57,7 @@ const (
 	pendingChangeDisguise
 	pendingServerAddress
 	pendingRestart
+	pendingFixPerms
 )
 
 type Model struct {
@@ -77,7 +82,7 @@ type Model struct {
 	renameOld string
 }
 
-var tabs = []string{"Dashboard", "Clients", "Doctor", "Logs", "Server"}
+var tabs = []string{"Dashboard", "Clients", "Doctor", "Logs", "Server", "Tools"}
 
 type actionResultMsg struct {
 	err   error
@@ -190,6 +195,40 @@ func (m Model) handleKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	r := key.Runes[0]
 
+	switch r {
+	case 'h':
+		m.active--
+		if m.active < 0 {
+			m.active = len(tabs) - 1
+		}
+		m.cursor = 0
+		return m, nil
+	case 'l':
+		m.active = (m.active + 1) % len(tabs)
+		m.cursor = 0
+		return m, nil
+	case 'j':
+		if tabs[m.active] == "Clients" && m.cursor < len(m.data.Clients)-1 {
+			m.cursor++
+		}
+		return m, nil
+	case 'k':
+		if tabs[m.active] == "Clients" && m.cursor > 0 {
+			m.cursor--
+		}
+		return m, nil
+	case 'g':
+		if tabs[m.active] == "Clients" {
+			m.cursor = 0
+		}
+		return m, nil
+	case 'G':
+		if tabs[m.active] == "Clients" && len(m.data.Clients) > 0 {
+			m.cursor = len(m.data.Clients) - 1
+		}
+		return m, nil
+	}
+
 	switch tabs[m.active] {
 	case "Dashboard", "Doctor", "Logs":
 		if r == 'r' {
@@ -240,6 +279,32 @@ func (m Model) handleKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, m.runCmd(m.svc.TestTUI, "config test passed")
 		case 'X':
 			m.startConfirm(pendingRestart, "restart xray service? (y/N): ")
+		}
+	case "Tools":
+		switch r {
+		case 'r':
+			m.data = m.svc.Data()
+			m.flash = "refreshed"
+		case 'b':
+			m.mode = modeBusy
+			if m.data.BBR == "enabled" {
+				return m, m.runCmd(m.svc.BBRDisableTUI, "BBR disabled")
+			}
+			return m, m.runCmd(m.svc.BBREnableTUI, "BBR enabled")
+		case 'f':
+			m.mode = modeBusy
+			if m.data.Forwarding == "1" || m.data.Forwarding == "enabled" {
+				return m, m.runCmd(m.svc.ForwardDisableTUI, "IP forwarding disabled")
+			}
+			return m, m.runCmd(m.svc.ForwardEnableTUI, "IP forwarding enabled")
+		case 'w':
+			m.mode = modeBusy
+			if m.data.FirewallStatus == "allowed" {
+				return m, m.runCmd(m.svc.FirewallCloseTUI, "firewall port closed")
+			}
+			return m, m.runCmd(m.svc.FirewallOpenTUI, "firewall port opened")
+		case 'P':
+			m.startConfirm(pendingFixPerms, "fix config perms and restart xray? (y/N): ")
 		}
 	}
 	return m, nil
@@ -342,6 +407,8 @@ func (m Model) handleConfirmKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.runCmd(func() error { return m.svc.ResetUUIDTUI(name) }, "uuid reset")
 	case pendingRestart:
 		return m, m.runCmd(m.svc.RestartTUI, "xray restarted")
+	case pendingFixPerms:
+		return m, m.runCmd(m.svc.FixPermsTUI, "config perms restored")
 	}
 	m.mode = modeNormal
 	m.pending = pendingNone
@@ -387,6 +454,8 @@ func (m Model) View() string {
 		b.WriteString(m.logs())
 	case "Server":
 		b.WriteString(m.server())
+	case "Tools":
+		b.WriteString(m.tools())
 	}
 	b.WriteString("\n\n")
 	b.WriteString(m.footer())
@@ -419,12 +488,14 @@ func (m Model) footer() string {
 }
 
 func (m Model) tabHelp() string {
-	common := "Tab/←→: switch  q: quit"
+	common := "h/l or Tab: switch tab  q: quit"
 	switch tabs[m.active] {
 	case "Clients":
-		return "↑↓: select  a: add  d: delete  R: rename  u: reset-uuid  s: show-link  r: refresh  " + common
+		return "j/k or ↑↓: select  g/G: top/bottom  a: add  d: delete  R: rename  u: reset-uuid  s: show-link  r: refresh  " + common
 	case "Server":
 		return "p: port  D: disguise  A: address  t: test  X: restart  r: refresh  " + common
+	case "Tools":
+		return "b: toggle BBR  f: toggle forwarding  w: toggle firewall  P: fix-perms  r: refresh  " + common
 	default:
 		return "r: refresh  " + common
 	}
@@ -502,6 +573,34 @@ func (m Model) logs() string {
 		return "Logs\n\nRun `xctl logs` for systemd logs."
 	}
 	return "Logs\n\n" + strings.Join(m.data.Logs, "\n")
+}
+
+func (m Model) tools() string {
+	return fmt.Sprintf(`Tools
+
+BBR:            %s
+IP forwarding:  %s
+Firewall:       %s
+                %s
+Config perms:   %s`,
+		value(m.data.BBR),
+		valueForward(m.data.Forwarding),
+		value(m.data.FirewallStatus),
+		value(m.data.FirewallDetail),
+		value(m.data.ConfigPerms),
+	)
+}
+
+func valueForward(v string) string {
+	switch v {
+	case "1":
+		return "enabled"
+	case "0":
+		return "disabled"
+	case "":
+		return "unknown"
+	}
+	return v
 }
 
 func (m Model) server() string {
