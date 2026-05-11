@@ -545,14 +545,16 @@ func (m Model) dashboard() string {
 	}
 	return prefix + fmt.Sprintf(`Dashboard
 
-Service: %s
-Xray Version: %s
-Port: %d
-SNI: %s
+xctl:          %s
+Service:       %s
+Xray Version:  %s
+Port:          %d
+SNI:           %s
 Saved Address: %s
-Clients: %d
-BBR: %s
-Config Test: %s`,
+Clients:       %d
+BBR:           %s
+Config Test:   %s`,
+		xctlVersionLine(m.data.XctlVersion, m.data.XctlLatest),
 		value(m.data.Service),
 		value(m.data.Version),
 		m.data.Port,
@@ -562,6 +564,19 @@ Config Test: %s`,
 		value(m.data.BBR),
 		value(m.data.ConfigStatus),
 	)
+}
+
+func xctlVersionLine(current, latest string) string {
+	if current == "" {
+		return "checking..."
+	}
+	if latest == "" {
+		return current + " (update check failed)"
+	}
+	if current == latest {
+		return current + " (latest)"
+	}
+	return fmt.Sprintf("%s — %s available", current, latest)
 }
 
 func (m Model) clients() string {

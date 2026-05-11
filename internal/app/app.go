@@ -270,33 +270,76 @@ func (a *App) TUIData() tui.ModelData {
 }
 
 func (a *App) printHelp() {
-	fmt.Fprintln(a.out, `xctl
+	fmt.Fprintln(a.out, `xctl — manage a bare-metal Xray VLESS+REALITY+Vision node
 
-Commands:
-  tui
-  status
-  doctor
-  list-clients
+Most commands need root because they read/write /usr/local/etc/xray/config.json
+and call systemctl. Run them with sudo unless noted otherwise.
+
+Setup:
+  init [--sni DOMAIN] [--port N] [--name NAME] [--force]
+                              first-time bootstrap: installs Xray if missing,
+                              generates Reality keys, writes config + server.info,
+                              starts the service, prints the initial VLESS link.
+                              Defaults: SNI www.microsoft.com, port 443.
+
+Interactive:
+  tui                         open the full-screen interactive TUI (default
+                              when xctl is invoked with no command).
+
+Status / inspection:
+  status                      show service state, port, SNI, address, client count.
+  doctor                      run local diagnostics with repair advice.
+  version                     print xctl version and check for a newer release.
+                              No sudo needed.
+
+Clients:
+  list-clients                list configured clients.
   add-client --name NAME [--uuid UUID]
-  remove-client --name NAME
+                              add a new client. UUID auto-generated if omitted.
+  remove-client --name NAME   remove a client.
   rename-client --name OLD --new-name NEW
+                              rename a client.
   reset-uuid --name NAME [--uuid UUID]
-  show-client --name NAME
-  export
+                              rotate a client's UUID.
+  show-client --name NAME     print the VLESS link for one client.
+  export                      print VLESS links for every client.
+
+Server settings (all atomic: write candidate, xray -test, replace, restart):
   change-port --port PORT
   change-disguise --domain DOMAIN
+                              change the disguise dest + SNI (sets dest to DOMAIN:443).
   server-address --address ADDRESS
-  test
-  restart
+                              set the address embedded in exported VLESS links
+                              (e.g. after a VPS IP change).
+
+Service:
+  test                        run xray -test on the current config.
+  restart                     systemctl restart xray.
   logs [--lines N] [-f|--follow]
-  init [--sni DOMAIN] [--port N] [--name NAME] [--force]
+                              show recent xray logs. -f streams like tail -f.
+
+System tweaks (auto-applied with sane defaults):
   bbr <enable|disable|status>
+                              persistent BBR + fq qdisc via /etc/sysctl.d/.
   forward <enable|disable|status>
+                              net.ipv4.ip_forward. Not needed for VLESS-only mode.
   firewall <open|close|status> [--port N]
-  fix-perms
-  version
-  install
-  xray-update`)
+                              auto-detect ufw / firewalld / iptables. Defaults
+                              to the current Xray port.
+  fix-perms                   set config to <xray-user>:<xray-group> 0644 and
+                              restart. Use this if you ever manually edited the
+                              config and Xray now fails to read it.
+
+Updates:
+  install                     download the latest xctl release for this arch
+                              and replace /usr/local/bin/xctl. Also the
+                              recommended install command on a fresh box once
+                              you have a copy of xctl available.
+  xray-update                 update Xray itself via the XTLS official
+                              install-release.sh.
+
+Run 'xctl <command> --help' on a subcommand's flag set for inline usage where
+the flag set is opaque (e.g. add-client --name "").`)
 }
 
 func (a *App) listClients() error {
