@@ -14,32 +14,22 @@ case "$(uname -m)" in
   *) echo "unsupported arch: $(uname -m)" >&2; exit 1 ;;
 esac
 
-if [ "${XCTL_SYSTEM:-0}" = "1" ] || [ "$(id -u)" = "0" ]; then
-  DEST="/usr/local/bin/xctl"
-  SUDO=""
-  [ "$(id -u)" = "0" ] || SUDO="sudo"
-else
-  DEST="${HOME}/.local/bin/xctl"
-  SUDO=""
+DEST="/usr/local/bin/xctl"
+SUDO=""
+if [ "$(id -u)" != "0" ]; then
+  if ! command -v sudo >/dev/null 2>&1; then
+    echo "xctl needs to be installed to ${DEST} (root-owned), but sudo is not available." >&2
+    echo "Re-run this script as root." >&2
+    exit 1
+  fi
+  SUDO="sudo"
 fi
 
 URL="https://github.com/${REPO}/releases/latest/download/xctl-${OS}-${ARCH}"
 
 echo "Installing xctl to ${DEST}"
-${SUDO} mkdir -p "$(dirname "${DEST}")"
 ${SUDO} curl -fsSL -o "${DEST}" "${URL}"
 ${SUDO} chmod 0755 "${DEST}"
 
 echo "Installed xctl at ${DEST}"
-
-BIN_DIR="$(dirname "${DEST}")"
-case ":${PATH}:" in
-  *":${BIN_DIR}:"*) ;;
-  *)
-    echo
-    echo "${BIN_DIR} is not on your PATH. Add it with:"
-    echo
-    echo "    echo 'export PATH=\"${BIN_DIR}:\$PATH\"' >> ~/.bashrc && source ~/.bashrc"
-    echo
-    ;;
-esac
+echo "Run: sudo xctl"
