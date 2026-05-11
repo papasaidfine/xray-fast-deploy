@@ -15,10 +15,11 @@ Expected system state:
 
 ## Install
 
-Download a Linux release asset and install it:
+Download a Linux release asset and install it for your user:
 
 ```bash
-sudo install -m 0755 xctl-linux-amd64 /usr/local/bin/xctl
+mkdir -p ~/.local/bin
+install -m 0755 xctl-linux-amd64 ~/.local/bin/xctl
 ```
 
 Build from source:
@@ -27,9 +28,17 @@ Build from source:
 go build -o xctl ./cmd/xctl
 ```
 
+To install system-wide instead:
+
+```bash
+sudo install -m 0755 xctl-linux-amd64 /usr/local/bin/xctl
+```
+
 ## Sudo
 
-Use `sudo` on a VPS. The default config paths are root-owned and service changes go through systemd.
+Installing `xctl` does not require sudo if it is placed under `~/.local/bin`.
+
+Use `sudo xctl ...` on a VPS when the command needs root-owned Xray files or systemd. The default config paths are root-owned.
 
 Recommended:
 
