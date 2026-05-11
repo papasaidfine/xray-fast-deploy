@@ -32,14 +32,7 @@ sudo xctl                          # opens the TUI by default
 sudo xctl tui                      # same thing
 ```
 
-Keybindings:
-
-- `Tab` / `←` `→` / `h` `l` — switch tabs (vim-style hjkl supported)
-- `↑` `↓` / `j` `k` — move cursor on the Clients tab; `g`/`G` jump to top/bottom
-- Clients tab: `a` add, `d` delete, `R` rename, `u` reset UUID, `s` show VLESS link with QR, `r` refresh
-- Server tab: `p` port, `D` disguise domain, `A` saved address, `t` test config, `X` restart xray, `r` refresh
-- Tools tab: `b` toggle BBR, `f` toggle IP forwarding, `w` toggle firewall, `P` fix config perms, `r` refresh
-- `Esc` cancels input/confirm prompts; `q` or `Ctrl+C` quits
+Each tab's keybindings are shown in the footer.
 
 ## CLI
 
