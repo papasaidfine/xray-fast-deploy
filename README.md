@@ -89,6 +89,40 @@ xctl restart
 xctl logs --lines 50
 ```
 
+## First-time setup
+
+On a fresh VPS:
+
+```bash
+sudo xctl init                              # installs Xray if missing, generates config, restarts
+# or with explicit options:
+sudo xctl init --sni www.apple.com --port 443 --name phone
+```
+
+`init` prints the initial VLESS link. Defaults: SNI `www.microsoft.com`, port `443`, client name `default`. Refuses to overwrite an existing config unless `--force` is passed.
+
+## System automation
+
+xctl wraps the common system-level tweaks so you don't have to remember the commands:
+
+```bash
+sudo xctl bbr enable           # enable BBR + fq qdisc, persistent
+sudo xctl bbr disable
+sudo xctl bbr status
+
+sudo xctl forward enable       # net.ipv4.ip_forward=1
+sudo xctl forward disable
+sudo xctl forward status
+
+sudo xctl firewall open        # open current Xray port (auto-detects ufw/firewalld/iptables)
+sudo xctl firewall close
+sudo xctl firewall status
+sudo xctl firewall open --port 8443   # override port
+
+sudo xctl fix-perms            # restore <xray-user>:<xray-group> 0644 on the config
+sudo xctl update               # run XTLS official install-release.sh @ install
+```
+
 ## Doctor
 
 `xctl doctor` runs local diagnostics and prints `ok`, `warn`, or `fail` results with short repair advice.

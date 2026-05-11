@@ -91,6 +91,18 @@ func (a *App) Run(args []string) error {
 		return a.runner.RestartService()
 	case "logs":
 		return a.logs(args[1:])
+	case "init":
+		return a.initConfig(args[1:])
+	case "bbr":
+		return a.bbrCmd(args[1:])
+	case "forward":
+		return a.forwardCmd(args[1:])
+	case "firewall":
+		return a.firewallCmd(args[1:])
+	case "fix-perms":
+		return a.fixPerms()
+	case "update":
+		return a.updateXray()
 	case "tui":
 		return ErrTUIRequested
 	default:
@@ -257,7 +269,13 @@ Commands:
   server-address --address ADDRESS
   test
   restart
-  logs [--lines N]`)
+  logs [--lines N]
+  init [--sni DOMAIN] [--port N] [--name NAME] [--force]
+  bbr <enable|disable|status>
+  forward <enable|disable|status>
+  firewall <open|close|status> [--port N]
+  fix-perms
+  update`)
 }
 
 func (a *App) listClients() error {

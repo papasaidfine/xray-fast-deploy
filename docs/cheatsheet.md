@@ -45,6 +45,16 @@ sudo xctl logs --lines 100
 
 ## BBR (TCP congestion control)
 
+xctl shortcut:
+
+```bash
+sudo xctl bbr enable
+sudo xctl bbr disable
+sudo xctl bbr status
+```
+
+Manual equivalents below.
+
 Check current state:
 
 ```bash
@@ -84,6 +94,16 @@ sudo sysctl -w net.core.default_qdisc=pfifo_fast
 For this `VLESS + REALITY + Vision` proxy mode you do **not** need IP
 forwarding — `xctl doctor` only reports it for visibility.
 
+xctl shortcut:
+
+```bash
+sudo xctl forward enable
+sudo xctl forward disable
+sudo xctl forward status
+```
+
+Manual:
+
 Check:
 
 ```bash
@@ -110,7 +130,16 @@ sudo sysctl -w net.ipv4.ip_forward=0
 
 ## Firewall — open the Xray port
 
-Replace `443` with your actual port (`sudo xctl status` shows it).
+xctl shortcut (auto-detects ufw/firewalld/iptables, uses the current Xray port):
+
+```bash
+sudo xctl firewall open
+sudo xctl firewall close
+sudo xctl firewall status
+sudo xctl firewall open --port 8443         # override
+```
+
+Manual equivalents below. Replace `443` with your actual port (`sudo xctl status` shows it).
 
 ### ufw (Ubuntu/Debian default)
 
@@ -186,9 +215,33 @@ user (default `xray:xray 0644`).
 
 ## Reinstall / update Xray itself
 
+xctl shortcut:
+
+```bash
+sudo xctl update
+```
+
+Manual:
+
 ```bash
 bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
 bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ remove
+```
+
+## First-time setup
+
+```bash
+sudo xctl init                                        # defaults: SNI www.microsoft.com, port 443
+sudo xctl init --sni www.apple.com --port 443 --name phone
+sudo xctl init --force                                # overwrite existing config
+```
+
+## Fix config permissions
+
+If you ever see xray fail with "failed to load config files" after a manual edit:
+
+```bash
+sudo xctl fix-perms
 ```
 
 ## Reinstall / update xctl
