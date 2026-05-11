@@ -110,6 +110,10 @@ Checks:
 
 Disabled IP forwarding is normal for this proxy mode. Cloud security groups cannot be verified from inside the VPS.
 
+## Cheatsheet
+
+See [docs/cheatsheet.md](docs/cheatsheet.md) for copy-pasteable commands covering everything `doctor` checks: enable/disable BBR, IP forwarding, open firewall ports (ufw/firewalld/iptables), inspect logs and disk space, restart Xray, etc.
+
 ## Safety Model
 
 Config-changing operations follow the same pipeline:
