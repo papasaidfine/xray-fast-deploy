@@ -15,16 +15,16 @@ Expected system state:
 
 ## Install
 
-Install the latest release to `~/.local/bin`:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/papasaidfine/xray-fast-deploy/main/scripts/install.sh | bash
-```
-
-System-wide (`/usr/local/bin`):
+Recommended — system-wide so `sudo xctl` just works:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/papasaidfine/xray-fast-deploy/main/scripts/install.sh | sudo bash
+```
+
+User-local (`~/.local/bin`, useful only if you also keep Xray files under your user):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/papasaidfine/xray-fast-deploy/main/scripts/install.sh | bash
 ```
 
 Build from source:
@@ -35,18 +35,17 @@ go build -o xctl ./cmd/xctl
 
 ## Sudo
 
-Installing `xctl` does not require sudo if it is placed under `~/.local/bin`.
-
-Use `sudo xctl ...` on a VPS when the command needs root-owned Xray files or systemd. The default config paths are root-owned.
-
-Recommended:
+`xctl` reads `/usr/local/etc/xray/config.json` and `/root/.xray-reality/server.info`, both root-owned. On a real VPS install you almost always run it as root:
 
 ```bash
+sudo xctl
 sudo xctl tui
 sudo xctl doctor
 sudo xctl add-client --name phone
 sudo xctl export
 ```
+
+A user-local install in `~/.local/bin` is not on `sudo`'s `PATH`, so you would have to run `sudo /home/USER/.local/bin/xctl tui` — that is why the system-wide install is recommended.
 
 Write/service commands:
 

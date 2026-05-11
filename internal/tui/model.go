@@ -21,6 +21,7 @@ type ModelData struct {
 	Clients      []Client
 	Doctor       []string
 	Logs         []string
+	LoadError    string
 }
 
 type Client struct {
@@ -444,7 +445,13 @@ func (m Model) renderTabs() string {
 }
 
 func (m Model) dashboard() string {
-	return fmt.Sprintf(`Dashboard
+	var prefix string
+	if m.data.LoadError != "" {
+		warn := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
+		prefix = warn.Render("Cannot read Xray config: "+m.data.LoadError) + "\n" +
+			"Try running with sudo (e.g. `sudo xctl tui`).\n\n"
+	}
+	return prefix + fmt.Sprintf(`Dashboard
 
 Service: %s
 Xray Version: %s

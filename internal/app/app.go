@@ -229,6 +229,8 @@ func (a *App) TUIData() tui.ModelData {
 		} else {
 			data.ConfigStatus = "failed"
 		}
+	} else {
+		data.LoadError = wrapPermErr(err, a.configPath).Error()
 	}
 	if info, err := serverinfo.Load(a.infoPath); err == nil {
 		data.Address = info.Address
@@ -387,7 +389,7 @@ func (a *App) export() error {
 func (a *App) status() error {
 	cfg, err := xray.LoadConfig(a.configPath)
 	if err != nil {
-		return err
+		return wrapPermErr(err, a.configPath)
 	}
 	info, _ := serverinfo.Load(a.infoPath)
 	fmt.Fprintf(a.out, "Service: %s\n", systemctlActive("xray"))
@@ -492,6 +494,13 @@ func (a *App) logs(args []string) error {
 	cmd.Stdout = a.out
 	cmd.Stderr = a.out
 	return cmd.Run()
+}
+
+func wrapPermErr(err error, path string) error {
+	if os.IsPermission(err) && os.Geteuid() != 0 {
+		return fmt.Errorf("%w (try running with sudo — %s is root-owned)", err, path)
+	}
+	return err
 }
 
 func requiredName(command string, args []string) (string, error) {
