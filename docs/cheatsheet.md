@@ -18,6 +18,7 @@ sudo systemctl enable xray         # start on boot
 sudo systemctl disable xray
 sudo journalctl -u xray -n 100 --no-pager
 sudo journalctl -u xray -f         # tail
+sudo xctl logs -f                  # same thing via xctl
 ```
 
 ## xctl quick reference
@@ -232,8 +233,10 @@ bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release
 
 ```bash
 xctl version                  # check current version, hints if there's a newer one
-sudo xctl self-update         # fetch latest release for this arch and replace /usr/local/bin/xctl
+sudo xctl install             # fetch latest release for this arch and replace /usr/local/bin/xctl
 ```
+
+The TUI dashboard also shows a banner when a new release is available.
 
 ## First-time setup
 

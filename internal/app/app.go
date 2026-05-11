@@ -108,7 +108,7 @@ func (a *App) Run(args []string) error {
 		return a.fixPerms()
 	case "xray-update":
 		return a.updateXray()
-	case "self-update":
+	case "install":
 		return a.selfUpdate()
 	case "version", "--version", "-v":
 		return a.printVersion()
@@ -288,14 +288,14 @@ Commands:
   server-address --address ADDRESS
   test
   restart
-  logs [--lines N]
+  logs [--lines N] [-f|--follow]
   init [--sni DOMAIN] [--port N] [--name NAME] [--force]
   bbr <enable|disable|status>
   forward <enable|disable|status>
   firewall <open|close|status> [--port N]
   fix-perms
   version
-  self-update
+  install
   xray-update`)
 }
 
@@ -526,10 +526,18 @@ func (a *App) logs(args []string) error {
 	fs := flag.NewFlagSet("logs", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	lines := fs.String("lines", "50", "lines")
+	follow := fs.Bool("f", false, "follow log output (like tail -f)")
+	fs.BoolVar(follow, "follow", false, "follow log output (like tail -f)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	cmd := exec.Command("journalctl", "-u", "xray", "-n", *lines, "--no-pager")
+	jArgs := []string{"-u", "xray", "-n", *lines}
+	if *follow {
+		jArgs = append(jArgs, "-f")
+	} else {
+		jArgs = append(jArgs, "--no-pager")
+	}
+	cmd := exec.Command("journalctl", jArgs...)
 	cmd.Stdout = a.out
 	cmd.Stderr = a.out
 	return cmd.Run()

@@ -26,6 +26,8 @@ type ModelData struct {
 	FirewallStatus string
 	FirewallDetail string
 	ConfigPerms    string
+	XctlVersion    string
+	XctlLatest     string
 }
 
 type Client struct {
@@ -95,11 +97,22 @@ type linkResultMsg struct {
 	err  error
 }
 
+type updateCheckMsg struct {
+	current string
+	latest  string
+}
+
 func New(svc Service) Model {
 	return Model{svc: svc, data: svc.Data()}
 }
 
-func (m Model) Init() tea.Cmd { return nil }
+func (m Model) Init() tea.Cmd {
+	svc := m.svc
+	return func() tea.Msg {
+		current, latest := svc.CheckUpdateTUI()
+		return updateCheckMsg{current: current, latest: latest}
+	}
+}
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -117,6 +130,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.cursor >= len(m.data.Clients) && m.cursor > 0 {
 			m.cursor = len(m.data.Clients) - 1
 		}
+		return m, nil
+	case updateCheckMsg:
+		m.data.XctlVersion = msg.current
+		m.data.XctlLatest = msg.latest
 		return m, nil
 	case linkResultMsg:
 		if msg.err != nil {
@@ -521,6 +538,10 @@ func (m Model) dashboard() string {
 		warn := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
 		prefix = warn.Render("Cannot read Xray config: "+m.data.LoadError) + "\n" +
 			"Try running with sudo (e.g. `sudo xctl tui`).\n\n"
+	}
+	if m.data.XctlVersion != "" && m.data.XctlLatest != "" && m.data.XctlVersion != m.data.XctlLatest {
+		hint := lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Bold(true)
+		prefix += hint.Render(fmt.Sprintf("xctl %s available (current %s) — run: sudo xctl install", m.data.XctlLatest, m.data.XctlVersion)) + "\n\n"
 	}
 	return prefix + fmt.Sprintf(`Dashboard
 

@@ -493,6 +493,17 @@ func (a *App) FirewallCloseTUI() error {
 }
 func (a *App) FixPermsTUI() error { return a.fixPerms() }
 
+func (a *App) CheckUpdateTUI() (current, latest string) {
+	latestTag, _, err := fetchLatestRelease()
+	if err != nil {
+		return a.version, ""
+	}
+	if compareVersions(a.version, latestTag) >= 0 {
+		return a.version, a.version
+	}
+	return a.version, latestTag
+}
+
 func requireRoot(cmd string) error {
 	if os.Geteuid() == 0 {
 		return nil
@@ -521,7 +532,7 @@ func (a *App) printVersion() error {
 	case 0:
 		fmt.Fprintln(a.out, "  up to date")
 	case -1:
-		fmt.Fprintf(a.out, "  new version available: %s — run: sudo xctl self-update\n", latest)
+		fmt.Fprintf(a.out, "  new version available: %s — run: sudo xctl install\n", latest)
 	default:
 		fmt.Fprintf(a.out, "  ahead of latest release %s\n", latest)
 	}
@@ -529,7 +540,7 @@ func (a *App) printVersion() error {
 }
 
 func (a *App) selfUpdate() error {
-	if err := requireRoot("self-update"); err != nil {
+	if err := requireRoot("install"); err != nil {
 		return err
 	}
 	latest, url, err := fetchLatestRelease()

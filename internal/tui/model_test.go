@@ -56,6 +56,9 @@ func (f *fakeService) ForwardDisableTUI() error { return nil }
 func (f *fakeService) FirewallOpenTUI() error   { return nil }
 func (f *fakeService) FirewallCloseTUI() error  { return nil }
 func (f *fakeService) FixPermsTUI() error       { return nil }
+func (f *fakeService) CheckUpdateTUI() (string, string) {
+	return "dev", "dev"
+}
 
 func newModel(svc Service) Model { return New(svc) }
 

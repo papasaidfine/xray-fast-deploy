@@ -88,6 +88,7 @@ xctl server-address --address vpn.example.com
 xctl test
 xctl restart
 xctl logs --lines 50
+xctl logs -f                                # follow (tail -f) the xray journal
 ```
 
 ## First-time setup
@@ -123,8 +124,8 @@ sudo xctl firewall open --port 8443   # override port
 sudo xctl fix-perms            # restore <xray-user>:<xray-group> 0644 on the config
 
 xctl version                   # print current xctl version + check for newer release
-sudo xctl self-update          # download and replace /usr/local/bin/xctl with the latest release
-sudo xctl xray-update          # run XTLS official install-release.sh @ install (updates Xray itself)
+sudo xctl install              # download latest xctl release and replace /usr/local/bin/xctl
+sudo xctl xray-update          # update Xray itself (runs XTLS official install-release.sh)
 ```
 
 ## Doctor

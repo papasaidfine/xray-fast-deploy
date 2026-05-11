@@ -19,4 +19,5 @@ type Service interface {
 	FirewallOpenTUI() error
 	FirewallCloseTUI() error
 	FixPermsTUI() error
+	CheckUpdateTUI() (current, latest string)
 }
