@@ -15,10 +15,10 @@ Expected system state:
 
 ## Install
 
-Installs xctl to `/usr/local/bin/xctl`. The script calls `sudo` itself if you are not root:
+Installs xctl to `/usr/local/bin/xctl`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/papasaidfine/xray-fast-deploy/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/papasaidfine/xray-fast-deploy/main/scripts/install.sh | sudo bash
 ```
 
 Build from source:

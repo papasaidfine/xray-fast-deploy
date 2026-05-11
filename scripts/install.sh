@@ -15,21 +15,18 @@ case "$(uname -m)" in
 esac
 
 DEST="/usr/local/bin/xctl"
-SUDO=""
 if [ "$(id -u)" != "0" ]; then
-  if ! command -v sudo >/dev/null 2>&1; then
-    echo "xctl needs to be installed to ${DEST} (root-owned), but sudo is not available." >&2
-    echo "Re-run this script as root." >&2
-    exit 1
-  fi
-  SUDO="sudo"
+  echo "This installer must run as root so it can write to ${DEST}." >&2
+  echo "Re-run with sudo, e.g." >&2
+  echo "    curl -fsSL https://raw.githubusercontent.com/${REPO}/main/scripts/install.sh | sudo bash" >&2
+  exit 1
 fi
 
 URL="https://github.com/${REPO}/releases/latest/download/xctl-${OS}-${ARCH}"
 
 echo "Installing xctl to ${DEST}"
-${SUDO} curl -fsSL -o "${DEST}" "${URL}"
-${SUDO} chmod 0755 "${DEST}"
+curl -fsSL -o "${DEST}" "${URL}"
+chmod 0755 "${DEST}"
 
 echo "Installed xctl at ${DEST}"
 echo "Run: sudo xctl"
