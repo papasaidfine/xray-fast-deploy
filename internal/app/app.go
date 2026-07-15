@@ -281,6 +281,8 @@ Setup:
                               generates Reality keys, writes config + server.info,
                               starts the service, prints the initial VLESS link.
                               Defaults: SNI www.microsoft.com, port 443.
+                              A config always has at least one client; --name
+                              is that first client's label (default "default").
 
 Interactive:
   tui                         open the full-screen interactive TUI (default

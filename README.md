@@ -19,11 +19,13 @@ curl -fsSL https://raw.githubusercontent.com/papasaidfine/xray-fast-deploy/main/
 On a fresh VPS:
 
 ```bash
-sudo xctl init                                          # installs Xray if missing, generates config, restarts
-sudo xctl init --sni www.apple.com --port 443 --name phone   # explicit options
+sudo xctl init                                   # installs Xray if missing, generates config, restarts
+sudo xctl init --sni www.apple.com --port 8443   # explicit options
 ```
 
-`init` prints the initial VLESS link. Defaults: SNI `www.microsoft.com`, port `443`, client name `default`. It refuses to overwrite an existing config unless you pass `--force`.
+`init` installs Xray if it's missing, generates the Reality keypair and config, starts the service, and prints the first VLESS link. Defaults: SNI `www.microsoft.com`, port `443`.
+
+A config always contains at least one client, so `init` creates the first one for you. Its name is just a label that shows up in exported links — it defaults to `default`, or pass `--name phone` to call your first device `phone`. You can rename it or add more clients later (see below). `init` refuses to overwrite an existing config unless you pass `--force`.
 
 ## TUI
 
