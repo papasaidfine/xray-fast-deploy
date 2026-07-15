@@ -145,7 +145,20 @@ func (c *Config) Clients() []Client {
 	return out
 }
 
+// requireInbound guards every method that writes to Inbounds[0]. A config
+// deployed by the official Xray installer is `{}`, so Inbounds can be empty
+// until `xctl init` has run.
+func (c *Config) requireInbound() error {
+	if len(c.Inbounds) == 0 {
+		return errors.New(`config has no inbounds — run "sudo xctl init" first`)
+	}
+	return nil
+}
+
 func (c *Config) AddClient(client Client) error {
+	if err := c.requireInbound(); err != nil {
+		return err
+	}
 	if client.Email == "" {
 		return errors.New("client name is required")
 	}
@@ -163,6 +176,9 @@ func (c *Config) AddClient(client Client) error {
 }
 
 func (c *Config) RemoveClient(name string) error {
+	if err := c.requireInbound(); err != nil {
+		return err
+	}
 	clients := c.Inbounds[0].Settings.Clients
 	if len(clients) <= 1 {
 		return errors.New("cannot remove the last client")
@@ -176,6 +192,9 @@ func (c *Config) RemoveClient(name string) error {
 }
 
 func (c *Config) RenameClient(oldName, newName string) error {
+	if err := c.requireInbound(); err != nil {
+		return err
+	}
 	if newName == "" {
 		return errors.New("new client name is required")
 	}
@@ -191,6 +210,9 @@ func (c *Config) RenameClient(oldName, newName string) error {
 }
 
 func (c *Config) ResetClientUUID(name, uuid string) error {
+	if err := c.requireInbound(); err != nil {
+		return err
+	}
 	if uuid == "" {
 		return errors.New("uuid is required")
 	}
@@ -209,8 +231,12 @@ func (c *Config) Port() int {
 	return c.Inbounds[0].Port
 }
 
-func (c *Config) SetPort(port int) {
+func (c *Config) SetPort(port int) error {
+	if err := c.requireInbound(); err != nil {
+		return err
+	}
 	c.Inbounds[0].Port = port
+	return nil
 }
 
 func (c *Config) SNI() string {
@@ -227,9 +253,13 @@ func (c *Config) Dest() string {
 	return c.Inbounds[0].StreamSettings.RealitySettings.Dest
 }
 
-func (c *Config) SetDisguise(dest, sni string) {
+func (c *Config) SetDisguise(dest, sni string) error {
+	if err := c.requireInbound(); err != nil {
+		return err
+	}
 	c.Inbounds[0].StreamSettings.RealitySettings.Dest = dest
 	c.Inbounds[0].StreamSettings.RealitySettings.ServerNames = []string{sni}
+	return nil
 }
 
 func (c *Config) LogLevel() string {

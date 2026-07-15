@@ -27,8 +27,7 @@ func TestSafeConfigUpdateValidatesBeforeReplaceAndRestart(t *testing.T) {
 
 	runner := &FakeRunner{}
 	err := SafeConfigUpdate(path, runner, func(cfg *xray.Config) error {
-		cfg.SetPort(8443)
-		return nil
+		return cfg.SetPort(8443)
 	})
 	if err != nil {
 		t.Fatalf("safe update: %v", err)
@@ -67,8 +66,7 @@ func TestSafeConfigUpdatePreservesFileMode(t *testing.T) {
 
 	runner := &FakeRunner{}
 	if err := SafeConfigUpdate(path, runner, func(cfg *xray.Config) error {
-		cfg.SetPort(8443)
-		return nil
+		return cfg.SetPort(8443)
 	}); err != nil {
 		t.Fatalf("safe update: %v", err)
 	}
@@ -104,8 +102,7 @@ func TestSafeConfigUpdateDoesNotReplaceOrRestartWhenValidationFails(t *testing.T
 
 	runner := &FakeRunner{TestErr: errors.New("invalid config")}
 	err = SafeConfigUpdate(path, runner, func(cfg *xray.Config) error {
-		cfg.SetPort(8443)
-		return nil
+		return cfg.SetPort(8443)
 	})
 	if err == nil {
 		t.Fatal("safe update succeeded, want validation error")

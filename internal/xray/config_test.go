@@ -2,8 +2,40 @@ package xray
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func TestEmptyConfigMutationsReturnError(t *testing.T) {
+	cases := []struct {
+		name string
+		call func(*Config) error
+	}{
+		{"AddClient", func(c *Config) error {
+			return c.AddClient(Client{ID: "11111111-1111-4111-8111-111111111111", Email: "phone"})
+		}},
+		{"RemoveClient", func(c *Config) error { return c.RemoveClient("phone") }},
+		{"RenameClient", func(c *Config) error { return c.RenameClient("phone", "tablet") }},
+		{"ResetClientUUID", func(c *Config) error {
+			return c.ResetClientUUID("phone", "22222222-2222-4222-8222-222222222222")
+		}},
+		{"SetPort", func(c *Config) error { return c.SetPort(8443) }},
+		{"SetDisguise", func(c *Config) error {
+			return c.SetDisguise("www.apple.com:443", "www.apple.com")
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.call(&Config{})
+			if err == nil {
+				t.Fatalf("%s on empty config succeeded, want error", tc.name)
+			}
+			if !strings.Contains(err.Error(), "no inbounds") {
+				t.Fatalf("%s error = %q, want mention of missing inbounds", tc.name, err)
+			}
+		})
+	}
+}
 
 func TestConfigClientLifecycle(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.json")
@@ -82,8 +114,12 @@ func TestServerSettings(t *testing.T) {
 		ClientName: "phone",
 	})
 
-	cfg.SetPort(8443)
-	cfg.SetDisguise("www.microsoft.com:443", "www.microsoft.com")
+	if err := cfg.SetPort(8443); err != nil {
+		t.Fatalf("set port: %v", err)
+	}
+	if err := cfg.SetDisguise("www.microsoft.com:443", "www.microsoft.com"); err != nil {
+		t.Fatalf("set disguise: %v", err)
+	}
 	cfg.SetLogLevel("info")
 
 	if cfg.Port() != 8443 {

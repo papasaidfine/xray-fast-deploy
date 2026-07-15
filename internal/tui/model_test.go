@@ -82,6 +82,14 @@ func TestInitialViewShowsDashboard(t *testing.T) {
 	}
 }
 
+func TestDashboardShowsNotInitializedHint(t *testing.T) {
+	svc := &fakeService{data: ModelData{NotInitialized: true}}
+	view := newModel(svc).View()
+	if !strings.Contains(view, "config not initialized — run: sudo xctl init") {
+		t.Fatalf("view missing not-initialized hint:\n%s", view)
+	}
+}
+
 func TestTabNavigation(t *testing.T) {
 	svc := &fakeService{}
 	next, _ := newModel(svc).Update(tea.KeyMsg{Type: tea.KeyTab})

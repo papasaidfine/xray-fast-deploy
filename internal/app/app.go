@@ -170,8 +170,7 @@ func (a *App) ChangePortTUI(port int) error {
 		return errors.New("port must be 1-65535")
 	}
 	return system.SafeConfigUpdate(a.configPath, a.runner, func(cfg *xray.Config) error {
-		cfg.SetPort(port)
-		return nil
+		return cfg.SetPort(port)
 	})
 }
 
@@ -180,8 +179,7 @@ func (a *App) ChangeDisguiseTUI(domain string) error {
 		return errors.New("domain is required")
 	}
 	return system.SafeConfigUpdate(a.configPath, a.runner, func(cfg *xray.Config) error {
-		cfg.SetDisguise(domain+":443", domain)
-		return nil
+		return cfg.SetDisguise(domain+":443", domain)
 	})
 }
 
@@ -240,6 +238,7 @@ func (a *App) TUIData() tui.ModelData {
 	}
 	cfg, err := xray.LoadConfig(a.configPath)
 	if err == nil {
+		data.NotInitialized = len(cfg.Inbounds) == 0
 		data.Port = cfg.Port()
 		data.SNI = cfg.SNI()
 		data.ClientCount = len(cfg.Clients())
@@ -554,8 +553,7 @@ func (a *App) changePort(args []string) error {
 		return errors.New("--port must be 1-65535")
 	}
 	return system.SafeConfigUpdate(a.configPath, a.runner, func(cfg *xray.Config) error {
-		cfg.SetPort(*port)
-		return nil
+		return cfg.SetPort(*port)
 	})
 }
 
@@ -570,8 +568,7 @@ func (a *App) changeDisguise(args []string) error {
 		return errors.New("--domain is required")
 	}
 	return system.SafeConfigUpdate(a.configPath, a.runner, func(cfg *xray.Config) error {
-		cfg.SetDisguise(*domain+":443", *domain)
-		return nil
+		return cfg.SetDisguise(*domain+":443", *domain)
 	})
 }
 

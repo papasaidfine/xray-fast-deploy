@@ -24,6 +24,7 @@ type ModelData struct {
 	Doctor         []string
 	Logs           []string
 	LoadError      string
+	NotInitialized bool
 	Forwarding     string
 	FirewallStatus string
 	FirewallDetail string
@@ -547,6 +548,10 @@ func (m Model) dashboard() string {
 		warn := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
 		prefix = warn.Render("Cannot read Xray config: "+m.data.LoadError) + "\n" +
 			"Try running with sudo (e.g. `sudo xctl tui`).\n\n"
+	}
+	if m.data.NotInitialized {
+		warn := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
+		prefix += warn.Render("config not initialized — run: sudo xctl init") + "\n\n"
 	}
 	if m.data.XctlVersion != "" && m.data.XctlLatest != "" && m.data.XctlVersion != m.data.XctlLatest {
 		hint := lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Bold(true)
