@@ -155,6 +155,32 @@ func TestDeleteClientRequiresConfirm(t *testing.T) {
 	_ = model
 }
 
+func TestShowLinkWrapsToTerminalWidth(t *testing.T) {
+	link := "vless://" + strings.Repeat("x", 200)
+	svc := &fakeService{
+		data:       ModelData{Clients: []Client{{Name: "phone", UUID: "u"}}},
+		linkResult: link,
+	}
+	m := newModel(svc)
+	model, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 24})
+	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyTab}) // Clients tab
+	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	if cmd == nil {
+		t.Fatal("expected link fetch cmd after 's'")
+	}
+	model, _ = model.Update(cmd())
+
+	view := model.(Model).View()
+	if !strings.Contains(strings.ReplaceAll(view, "\n", ""), strings.Repeat("x", 200)) {
+		t.Fatalf("full link missing from view:\n%s", view)
+	}
+	for _, line := range strings.Split(view, "\n") {
+		if strings.Contains(line, "xxxx") && len(line) > 40 {
+			t.Fatalf("link line exceeds terminal width (%d chars): %q", len(line), line)
+		}
+	}
+}
+
 func TestActionErrorShowsFlash(t *testing.T) {
 	svc := &fakeService{
 		data:   ModelData{Clients: []Client{{Name: "phone"}}},

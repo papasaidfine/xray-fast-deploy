@@ -72,6 +72,7 @@ type Model struct {
 	cursor  int
 	mode    mode
 	pending pendingKind
+	width   int
 
 	prompt string
 	input  string
@@ -156,6 +157,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.linkQR = ""
 		}
+		return m, nil
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
 		return m, nil
 	case tea.KeyMsg:
 		return m.handleKey(msg)
@@ -491,7 +495,9 @@ func (m Model) View() string {
 
 func (m Model) footer() string {
 	if m.mode == modeShowLink {
-		return fmt.Sprintf("%s\n\n%s\n\n%s\nPress any key to continue.", m.linkName, m.linkText, m.linkQR)
+		// The renderer truncates lines wider than the terminal, so
+		// hard-wrap the link to keep the full URL visible.
+		return fmt.Sprintf("%s\n\n%s\n\n%s\nPress any key to continue.", m.linkName, hardWrap(m.linkText, m.width), m.linkQR)
 	}
 	if m.mode == modeInput {
 		return m.prompt + m.input + "_  (Enter: submit  Esc: cancel)"
@@ -670,4 +676,19 @@ func value(v string) string {
 		return "unknown"
 	}
 	return v
+}
+
+func hardWrap(s string, width int) string {
+	if width <= 0 || len(s) <= width {
+		return s
+	}
+	var b strings.Builder
+	runes := []rune(s)
+	for len(runes) > width {
+		b.WriteString(string(runes[:width]))
+		b.WriteByte('\n')
+		runes = runes[width:]
+	}
+	b.WriteString(string(runes))
+	return b.String()
 }
