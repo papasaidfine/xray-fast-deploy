@@ -241,8 +241,9 @@ The TUI dashboard also shows a banner when a new release is available.
 ## First-time setup
 
 ```bash
-sudo xctl init                                        # defaults: SNI www.microsoft.com, port 443
-sudo xctl init --sni www.apple.com --port 443 --name phone
+sudo xctl init                                        # defaults: SNI www.apple.com, port 443
+sudo xctl init --sni www.icloud.com --port 8443       # explicit options
+sudo xctl init --name phone                           # label for the first client (default "default")
 sudo xctl init --force                                # overwrite existing config
 ```
 

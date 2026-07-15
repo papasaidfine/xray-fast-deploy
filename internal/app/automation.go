@@ -31,7 +31,7 @@ const (
 	xrayInstallURL  = "https://github.com/XTLS/Xray-install/raw/main/install-release.sh"
 	bbrSysctlFile   = "/etc/sysctl.d/99-xctl-bbr.conf"
 	fwdSysctlFile   = "/etc/sysctl.d/99-xctl-ip-forward.conf"
-	defaultSNI      = "www.microsoft.com"
+	defaultSNI      = "www.apple.com"
 	defaultPort     = 443
 	defaultName     = "default"
 	xrayServiceName = "xray"

@@ -280,7 +280,7 @@ Setup:
                               first-time bootstrap: installs Xray if missing,
                               generates Reality keys, writes config + server.info,
                               starts the service, prints the initial VLESS link.
-                              Defaults: SNI www.microsoft.com, port 443.
+                              Defaults: SNI www.apple.com, port 443.
                               A config always has at least one client; --name
                               is that first client's label (default "default").
 
