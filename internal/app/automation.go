@@ -137,24 +137,32 @@ func generateRealityKeypair() (pub, priv string, err error) {
 	if err != nil {
 		return "", "", fmt.Errorf("xray x25519: %w: %s", err, string(out))
 	}
-	scanner := bufio.NewScanner(strings.NewReader(string(out)))
+	return parseX25519Output(string(out))
+}
+
+// parseX25519Output handles every label `xray x25519` has used across
+// versions: "Private key:"/"Public key:", "PrivateKey:"/"Password:", and
+// the 26.x "PrivateKey:"/"Password (PublicKey):" (plus an ignored Hash32
+// line). Labels are matched by keyword, not exact prefix, so minor future
+// renames keep working.
+func parseX25519Output(out string) (pub, priv string, err error) {
+	scanner := bufio.NewScanner(strings.NewReader(out))
 	for scanner.Scan() {
-		line := scanner.Text()
-		if v, ok := cutPrefix(line, "Private key:"); ok {
-			priv = strings.TrimSpace(v)
+		label, value, ok := strings.Cut(scanner.Text(), ":")
+		if !ok {
+			continue
 		}
-		if v, ok := cutPrefix(line, "PrivateKey:"); ok {
-			priv = strings.TrimSpace(v)
-		}
-		if v, ok := cutPrefix(line, "Public key:"); ok {
-			pub = strings.TrimSpace(v)
-		}
-		if v, ok := cutPrefix(line, "Password:"); ok {
-			pub = strings.TrimSpace(v)
+		label = strings.ToLower(strings.ReplaceAll(label, " ", ""))
+		value = strings.TrimSpace(value)
+		switch {
+		case strings.Contains(label, "private"):
+			priv = value
+		case strings.Contains(label, "public") || label == "password":
+			pub = value
 		}
 	}
 	if pub == "" || priv == "" {
-		return "", "", fmt.Errorf("could not parse xray x25519 output:\n%s", string(out))
+		return "", "", fmt.Errorf("could not parse xray x25519 output:\n%s", out)
 	}
 	return pub, priv, nil
 }
@@ -732,4 +740,3 @@ func splitVersion(v string) (nums []int, pre string) {
 	}
 	return nums, pre
 }
-
