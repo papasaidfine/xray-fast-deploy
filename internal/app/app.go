@@ -109,7 +109,7 @@ func (a *App) Run(args []string) error {
 	case "fix-perms":
 		return a.fixPerms()
 	case "xray-update":
-		return a.updateXray()
+		return a.updateXray(args[1:])
 	case "install":
 		return a.selfUpdate()
 	case "version", "--version", "-v":
@@ -277,13 +277,17 @@ Most commands need root because they read/write /usr/local/etc/xray/config.json
 and call systemctl. Run them with sudo unless noted otherwise.
 
 Setup:
-  init [--sni DOMAIN] [--port N] [--name NAME] [--force]
+  init [--sni DOMAIN] [--port N] [--name NAME] [--force] [--proxy URL]
                               first-time bootstrap: installs Xray if missing,
                               generates Reality keys, writes config + server.info,
                               starts the service, prints the initial VLESS link.
                               Defaults: SNI www.apple.com, port 443.
                               A config always has at least one client; --name
                               is that first client's label (default "default").
+                              --proxy routes the Xray installer download through
+                              a proxy (e.g. socks5://127.0.0.1:1080), for hosts
+                              where GitHub is blocked. Only used when Xray is
+                              missing.
 
 Interactive:
   tui                         open the full-screen interactive TUI (default
@@ -341,8 +345,9 @@ Updates:
                               and replace /usr/local/bin/xctl. Also the
                               recommended install command on a fresh box once
                               you have a copy of xctl available.
-  xray-update                 update Xray itself via the XTLS official
-                              install-release.sh.
+  xray-update [--proxy URL]   update Xray itself via the XTLS official
+                              install-release.sh. --proxy routes the download
+                              through a proxy (e.g. socks5://127.0.0.1:1080).
 
 Run 'xctl <command> --help' on a subcommand's flag set for inline usage where
 the flag set is opaque (e.g. add-client --name "").`)

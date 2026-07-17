@@ -2,6 +2,7 @@ package app
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -49,6 +50,7 @@ func (a *App) initConfig(args []string) error {
 	port := fs.Int("port", defaultPort, "listen port")
 	name := fs.String("name", defaultName, "initial client name")
 	force := fs.Bool("force", false, "overwrite existing config")
+	proxy := fs.String("proxy", "", "route the Xray installer download through this proxy (http:// or socks5://)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -59,7 +61,7 @@ func (a *App) initConfig(args []string) error {
 
 	if !commandExists("xray") && !fileExists("/usr/local/bin/xray") {
 		fmt.Fprintln(a.out, "Xray not found, installing via XTLS official script...")
-		if err := installXray(); err != nil {
+		if err := runXrayInstaller(a.out, *proxy); err != nil {
 			return err
 		}
 	}
@@ -120,12 +122,43 @@ func (a *App) initConfig(args []string) error {
 	return nil
 }
 
-func installXray() error {
-	cmd := exec.Command("bash", "-c",
-		fmt.Sprintf(`bash -c "$(curl -L %s)" @ install`, xrayInstallURL))
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+// runXrayInstaller fetches the XTLS official install-release.sh and runs its
+// "install" action. When proxy is non-empty it is used both for fetching the
+// script (curl -x) and for the script's own downloads (--proxy), so it works
+// on hosts where GitHub is blocked. The script is piped in via stdin and the
+// proxy is passed as a discrete argv element, never spliced into a shell
+// string, so a user-supplied value cannot be interpreted by the shell.
+func runXrayInstaller(out io.Writer, proxy string) error {
+	script, err := exec.Command("curl", installerCurlArgs(proxy)...).Output()
+	if err != nil {
+		return fmt.Errorf("download xray installer: %w", err)
+	}
+	cmd := exec.Command("bash", installerBashArgs(proxy)...)
+	cmd.Stdin = bytes.NewReader(script)
+	cmd.Stdout = out
+	cmd.Stderr = out
 	return cmd.Run()
+}
+
+// installerCurlArgs builds the curl argv that downloads the installer script,
+// routing the fetch through proxy when one is set.
+func installerCurlArgs(proxy string) []string {
+	args := []string{"-L"}
+	if proxy != "" {
+		args = append(args, "-x", proxy)
+	}
+	return append(args, xrayInstallURL)
+}
+
+// installerBashArgs builds the bash argv that runs the installer from stdin
+// (bash -s: positional params start at $1, matching the script's "install"
+// action), appending --proxy so the script proxies its own core download too.
+func installerBashArgs(proxy string) []string {
+	args := []string{"-s", "install"}
+	if proxy != "" {
+		args = append(args, "--proxy", proxy)
+	}
+	return args
 }
 
 func generateRealityKeypair() (pub, priv string, err error) {
@@ -437,16 +470,18 @@ func chownByName(path, user, group string) error {
 
 // --------- update xray ---------
 
-func (a *App) updateXray() error {
+func (a *App) updateXray(args []string) error {
 	if err := requireRoot("update"); err != nil {
 		return err
 	}
+	fs := flag.NewFlagSet("xray-update", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	proxy := fs.String("proxy", "", "route the Xray installer download through this proxy (http:// or socks5://)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
 	fmt.Fprintln(a.out, "Updating Xray via XTLS official installer...")
-	cmd := exec.Command("bash", "-c",
-		fmt.Sprintf(`bash -c "$(curl -L %s)" @ install`, xrayInstallURL))
-	cmd.Stdout = a.out
-	cmd.Stderr = a.out
-	if err := cmd.Run(); err != nil {
+	if err := runXrayInstaller(a.out, *proxy); err != nil {
 		return err
 	}
 	// Re-apply service ownership in case the installer reset perms.

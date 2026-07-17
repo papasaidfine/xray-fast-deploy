@@ -12,6 +12,15 @@ Installs `xctl` to `/usr/local/bin/xctl`:
 curl -fsSL https://raw.githubusercontent.com/papasaidfine/xray-fast-deploy/main/scripts/install.sh | sudo bash
 ```
 
+On a host where GitHub is blocked, pass `--proxy` to route the `xctl` binary download through a proxy:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/papasaidfine/xray-fast-deploy/main/scripts/install.sh \
+  | sudo bash -s -- --proxy socks5://127.0.0.1:1080
+```
+
+Note the *outer* `curl` (which fetches this script from `raw.githubusercontent.com`) is your own command — if that host is blocked too, prefix it with your proxy (`curl -x socks5://127.0.0.1:1080 -fsSL …`) or use a mirror.
+
 `xctl` reads and writes root-owned Xray files (`/usr/local/etc/xray/config.json`, `/root/.xray-reality/server.info`) and calls `systemctl restart xray`, so every command except `xctl version` needs `sudo`.
 
 ## First-time setup
@@ -26,6 +35,8 @@ sudo xctl init --sni www.icloud.com --port 8443   # explicit options
 `init` installs Xray if it's missing, generates the Reality keypair and config, starts the service, and prints the first VLESS link. Defaults: SNI `www.apple.com`, port `443`.
 
 A config always contains at least one client, so `init` creates the first one for you. Its name is just a label that shows up in exported links — it defaults to `default`, or pass `--name phone` to call your first device `phone`. You can rename it or add more clients later (see below). `init` refuses to overwrite an existing config unless you pass `--force`.
+
+On a host where GitHub is blocked, add `--proxy socks5://127.0.0.1:1080` (or `http://…`) so the Xray installer download routes through your proxy. The same flag works on `xctl xray-update`. `--proxy` only matters when Xray is being downloaded; it has no effect once Xray is already installed.
 
 ## TUI
 
@@ -72,6 +83,7 @@ sudo xctl fix-perms                                    # restore <xray-user>:<gr
 xctl version                                           # check current vs. latest release
 sudo xctl install                                      # update xctl itself
 sudo xctl xray-update                                  # update Xray via the official XTLS installer
+sudo xctl xray-update --proxy socks5://127.0.0.1:1080  # ...through a proxy, for GitHub-blocked hosts
 ```
 
 ## Doctor

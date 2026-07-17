@@ -3,6 +3,20 @@ set -euo pipefail
 
 REPO="papasaidfine/xray-fast-deploy"
 
+PROXY=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --proxy)
+      if [ $# -lt 2 ] || [ -z "$2" ]; then
+        echo "--proxy requires a URL, e.g. --proxy socks5://127.0.0.1:1080" >&2
+        exit 1
+      fi
+      PROXY="$2"; shift 2 ;;
+    --proxy=*) PROXY="${1#*=}"; shift ;;
+    *) echo "unknown argument: $1" >&2; exit 1 ;;
+  esac
+done
+
 case "$(uname -s)" in
   Linux) OS="linux" ;;
   *) echo "unsupported OS: $(uname -s)" >&2; exit 1 ;;
@@ -25,7 +39,12 @@ fi
 URL="https://github.com/${REPO}/releases/latest/download/xctl-${OS}-${ARCH}"
 
 echo "Installing xctl to ${DEST}"
-curl -fsSL -o "${DEST}" "${URL}"
+CURL_OPTS=(-fsSL)
+if [ -n "${PROXY}" ]; then
+  echo "Downloading through proxy ${PROXY}"
+  CURL_OPTS+=(-x "${PROXY}")
+fi
+curl "${CURL_OPTS[@]}" -o "${DEST}" "${URL}"
 chmod 0755 "${DEST}"
 
 echo "Installed xctl at ${DEST}"

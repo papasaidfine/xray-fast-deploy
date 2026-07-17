@@ -1,6 +1,7 @@
 package app
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -58,6 +59,40 @@ func TestParseX25519OutputRejectsUnknownFormat(t *testing.T) {
 	if !strings.Contains(err.Error(), raw) {
 		t.Fatalf("error %q does not include the raw output", err)
 	}
+}
+
+func TestInstallerCurlArgs(t *testing.T) {
+	t.Run("no proxy", func(t *testing.T) {
+		got := installerCurlArgs("")
+		want := []string{"-L", xrayInstallURL}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("installerCurlArgs(\"\") = %q, want %q", got, want)
+		}
+	})
+	t.Run("with proxy", func(t *testing.T) {
+		got := installerCurlArgs("socks5://127.0.0.1:1080")
+		want := []string{"-L", "-x", "socks5://127.0.0.1:1080", xrayInstallURL}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("installerCurlArgs(proxy) = %q, want %q", got, want)
+		}
+	})
+}
+
+func TestInstallerBashArgs(t *testing.T) {
+	t.Run("no proxy", func(t *testing.T) {
+		got := installerBashArgs("")
+		want := []string{"-s", "install"}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("installerBashArgs(\"\") = %q, want %q", got, want)
+		}
+	})
+	t.Run("with proxy", func(t *testing.T) {
+		got := installerBashArgs("http://127.0.0.1:8118")
+		want := []string{"-s", "install", "--proxy", "http://127.0.0.1:8118"}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("installerBashArgs(proxy) = %q, want %q", got, want)
+		}
+	})
 }
 
 func TestCompareVersions(t *testing.T) {
