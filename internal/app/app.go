@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -650,8 +651,14 @@ func newUUID() string {
 	return fmt.Sprintf("%d", time.Now().UnixNano())
 }
 
+var publicIPv4Endpoints = []string{"https://ifconfig.me/ip", "https://ipinfo.io/ip", "https://icanhazip.com"}
+
 func detectPublicIPv4() (string, error) {
-	for _, endpoint := range []string{"https://ifconfig.me", "https://ipinfo.io/ip", "https://icanhazip.com"} {
+	return detectPublicIPv4From(publicIPv4Endpoints)
+}
+
+func detectPublicIPv4From(endpoints []string) (string, error) {
+	for _, endpoint := range endpoints {
 		client := http.Client{Timeout: 3 * time.Second}
 		resp, err := client.Get(endpoint)
 		if err != nil {
@@ -659,11 +666,14 @@ func detectPublicIPv4() (string, error) {
 		}
 		body, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
-			ip := strings.TrimSpace(string(body))
-			if ip != "" {
-				return ip, nil
-			}
+		if err != nil || resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			continue
+		}
+		// Reject anything that isn't a bare IPv4 address (e.g. ifconfig.me
+		// serves an HTML page when it doesn't recognise the client as a CLI).
+		ip := strings.TrimSpace(string(body))
+		if parsed := net.ParseIP(ip); parsed != nil && parsed.To4() != nil {
+			return ip, nil
 		}
 	}
 	return "", errors.New("public IPv4 detection failed")
