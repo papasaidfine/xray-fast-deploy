@@ -95,6 +95,38 @@ func TestInstallerBashArgs(t *testing.T) {
 	})
 }
 
+func TestPickFallbackUser(t *testing.T) {
+	set := func(names ...string) func(string) bool {
+		m := map[string]bool{}
+		for _, n := range names {
+			m[n] = true
+		}
+		return func(s string) bool { return m[s] }
+	}
+	cases := []struct {
+		name      string
+		users     []string
+		groups    []string
+		wantUser  string
+		wantGroup string
+	}{
+		{"xray user and group", []string{"xray"}, []string{"xray"}, "xray", "xray"},
+		{"nobody with nogroup", []string{"nobody"}, []string{"nogroup"}, "nobody", "nogroup"},
+		{"nobody with nobody group", []string{"nobody"}, []string{"nobody"}, "nobody", "nobody"},
+		{"nobody but no matching group", []string{"nobody"}, nil, "nobody", ""},
+		{"xray preferred over nobody", []string{"xray", "nobody"}, []string{"xray", "nogroup"}, "xray", "xray"},
+		{"no service user exists", nil, nil, "", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			u, g := pickFallbackUser(set(tc.users...), set(tc.groups...))
+			if u != tc.wantUser || g != tc.wantGroup {
+				t.Errorf("pickFallbackUser = (%q, %q), want (%q, %q)", u, g, tc.wantUser, tc.wantGroup)
+			}
+		})
+	}
+}
+
 func TestCompareVersions(t *testing.T) {
 	cases := []struct {
 		a, b string

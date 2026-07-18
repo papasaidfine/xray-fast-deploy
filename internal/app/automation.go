@@ -51,6 +51,7 @@ func (a *App) initConfig(args []string) error {
 	name := fs.String("name", defaultName, "initial client name")
 	force := fs.Bool("force", false, "overwrite existing config")
 	proxy := fs.String("proxy", "", "route the Xray installer download through this proxy (http:// or socks5://)")
+	noBBR := fs.Bool("no-bbr", false, "do not enable BBR congestion control")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -105,6 +106,14 @@ func (a *App) initConfig(args []string) error {
 	}
 	if err := a.runner.RestartService(); err != nil {
 		return err
+	}
+
+	if !*noBBR {
+		if err := applyBBR(); err != nil {
+			fmt.Fprintf(a.out, "warning: could not enable BBR: %v\n", err)
+		} else {
+			fmt.Fprintln(a.out, "BBR enabled (congestion=bbr, qdisc=fq).")
+		}
 	}
 
 	fmt.Fprintln(a.out, "Xray initialized.")
@@ -239,6 +248,15 @@ func (a *App) bbrCmd(args []string) error {
 }
 
 func (a *App) bbrEnable() error {
+	if err := applyBBR(); err != nil {
+		return err
+	}
+	return a.bbrStatus()
+}
+
+// applyBBR persists BBR + fq and reloads sysctl. Split out so init can turn BBR
+// on by default without printing the full status block.
+func applyBBR() error {
 	_ = exec.Command("modprobe", "tcp_bbr").Run()
 	content := "net.core.default_qdisc=fq\nnet.ipv4.tcp_congestion_control=bbr\n"
 	if err := os.WriteFile(bbrSysctlFile, []byte(content), 0o644); err != nil {
@@ -247,7 +265,7 @@ func (a *App) bbrEnable() error {
 	if out, err := exec.Command("sysctl", "--system").CombinedOutput(); err != nil {
 		return fmt.Errorf("sysctl --system: %w: %s", err, out)
 	}
-	return a.bbrStatus()
+	return nil
 }
 
 func (a *App) bbrDisable() error {
@@ -414,15 +432,15 @@ func (a *App) fixPerms() error {
 	if err := requireRoot("fix-perms"); err != nil {
 		return err
 	}
-	user, group := serviceUserGroup(xrayServiceName)
-	if user == "" {
-		user = "xray"
-		group = "xray"
-	}
-	if err := chownByName(a.configPath, user, group); err != nil {
+	if err := os.Chmod(a.configPath, 0o644); err != nil {
 		return err
 	}
-	if err := os.Chmod(a.configPath, 0o644); err != nil {
+	user, group := resolveServiceUser(xrayServiceName)
+	if user == "" {
+		fmt.Fprintf(a.out, "set %s to 0644 (no xray service user found; owner left unchanged)\n", a.configPath)
+		return a.runner.RestartService()
+	}
+	if err := chownByName(a.configPath, user, group); err != nil {
 		return err
 	}
 	fmt.Fprintf(a.out, "set %s to %s:%s 0644\n", a.configPath, user, group)
@@ -430,15 +448,57 @@ func (a *App) fixPerms() error {
 }
 
 func applyServiceOwnership(path string) error {
-	user, group := serviceUserGroup(xrayServiceName)
-	if user == "" {
-		user = "xray"
-		group = "xray"
-	}
 	if err := os.Chmod(path, 0o644); err != nil {
 		return err
 	}
+	user, group := resolveServiceUser(xrayServiceName)
+	if user == "" {
+		// No service account we can point at. The config is world-readable
+		// (0644) so Xray can still read it — skip chown rather than fail.
+		return nil
+	}
 	return chownByName(path, user, group)
+}
+
+// resolveServiceUser returns the account the config should be owned by: the
+// user the systemd unit runs as, or a conventional fallback that actually
+// exists on the box. Returns an empty user when nothing suitable exists.
+func resolveServiceUser(service string) (user, group string) {
+	if u, g := serviceUserGroup(service); u != "" {
+		return u, g
+	}
+	return pickFallbackUser(userExists, groupExists)
+}
+
+// pickFallbackUser selects the first conventional Xray service account that
+// exists (the XTLS installer uses nobody; older setups used a dedicated xray
+// user), pairing it with a group that exists. It never returns a user that is
+// absent, which is what made init fail with "invalid user: xray:xray" on hosts
+// that were never set up by the official installer.
+func pickFallbackUser(userExists, groupExists func(string) bool) (user, group string) {
+	for _, u := range []string{"xray", "nobody"} {
+		if !userExists(u) {
+			continue
+		}
+		for _, g := range []string{u, "nogroup"} {
+			if groupExists(g) {
+				return u, g
+			}
+		}
+		// User exists but no obvious group; chown "user:" uses its primary.
+		return u, ""
+	}
+	return "", ""
+}
+
+func userExists(name string) bool {
+	_, err := user.Lookup(name)
+	return err == nil
+}
+
+func groupExists(name string) bool {
+	_, err := user.LookupGroup(name)
+	return err == nil
 }
 
 func serviceUserGroup(service string) (user, group string) {

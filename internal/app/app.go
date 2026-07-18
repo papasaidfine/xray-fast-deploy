@@ -277,17 +277,17 @@ Most commands need root because they read/write /usr/local/etc/xray/config.json
 and call systemctl. Run them with sudo unless noted otherwise.
 
 Setup:
-  init [--sni DOMAIN] [--port N] [--name NAME] [--force] [--proxy URL]
+  init [--sni DOMAIN] [--port N] [--name NAME] [--force] [--proxy URL] [--no-bbr]
                               first-time bootstrap: installs Xray if missing,
                               generates Reality keys, writes config + server.info,
-                              starts the service, prints the initial VLESS link.
+                              starts the service, enables BBR, prints the VLESS link.
                               Defaults: SNI www.apple.com, port 443.
                               A config always has at least one client; --name
                               is that first client's label (default "default").
                               --proxy routes the Xray installer download through
                               a proxy (e.g. socks5://127.0.0.1:1080), for hosts
                               where GitHub is blocked. Only used when Xray is
-                              missing.
+                              missing. --no-bbr skips turning on BBR.
 
 Interactive:
   tui                         open the full-screen interactive TUI (default
